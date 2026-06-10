@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface CreditCardRepository extends JpaRepository<CreditCard, UUID> {
     List<CreditCard> findByFamilyGroupIdAndIsActiveTrueOrderByNameAsc(UUID familyGroupId);
+    long countByFamilyGroupIdAndIsActiveTrue(UUID familyGroupId);
 }

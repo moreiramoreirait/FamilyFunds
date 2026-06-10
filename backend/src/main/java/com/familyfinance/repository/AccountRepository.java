@@ -13,6 +13,7 @@ import java.util.UUID;
 public interface AccountRepository extends JpaRepository<Account, UUID> {
     List<Account> findByFamilyGroupIdAndIsActiveTrueOrderByNameAsc(UUID familyGroupId);
     List<Account> findByFamilyGroupId(UUID familyGroupId);
+    long countByFamilyGroupIdAndIsActiveTrue(UUID familyGroupId);
 
     @Query("SELECT COALESCE(SUM(a.currentBalance), 0) FROM Account a WHERE a.familyGroup.id = :familyGroupId AND a.isActive = true AND a.includeInTotal = true")
     BigDecimal sumBalanceByFamilyGroupId(UUID familyGroupId);

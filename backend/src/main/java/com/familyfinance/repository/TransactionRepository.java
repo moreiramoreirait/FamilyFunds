@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -50,6 +51,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     @Query("SELECT t FROM Transaction t WHERE t.familyGroup.id IS NOT NULL " +
            "AND t.status = 'PENDING' AND t.dueDate BETWEEN :start AND :end")
     List<Transaction> findDueSoonTransactions(LocalDate start, LocalDate end);
+
+    long countByFamilyGroupIdAndCreatedAtBetween(UUID familyGroupId, LocalDateTime start, LocalDateTime end);
 
     @Query(value = "SELECT DATE_TRUNC('month', t.transaction_date) as month, " +
             "SUM(CASE WHEN t.type = 'INCOME' THEN t.amount ELSE 0 END) as income, " +

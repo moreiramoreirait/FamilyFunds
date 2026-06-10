@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import SubscriptionBanner from './SubscriptionBanner'
 import { useUIStore } from '@/store/uiStore'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +16,7 @@ export default function AppLayout() {
         sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
       )}>
         <Header />
+        <SubscriptionBanner />
         <main className="flex-1 overflow-auto p-4 md:p-6">
           <div className="max-w-7xl mx-auto animate-fade-in">
             <Outlet />

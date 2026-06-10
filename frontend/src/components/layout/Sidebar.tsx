@@ -4,12 +4,14 @@ import {
   BarChart2, Users, Settings, TrendingUp, LogOut, ChevronLeft,
   ChevronRight, PiggyBank, FileUp
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore } from '@/store/uiStore'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/utils'
+import { subscriptionsApi } from '@/api/subscriptions'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -24,15 +26,34 @@ const navItems = [
   { to: '/settings', icon: Settings, label: 'Configurações' },
 ]
 
+const planBadgeConfig: Record<string, { label: string; className: string }> = {
+  FREE:     { label: 'Gratuito', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
+  TRIAL:    { label: 'Trial',    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+  PRO:      { label: 'Pro',      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  BUSINESS: { label: 'Business', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
+}
+
 export default function Sidebar() {
-  const { user, logout } = useAuthStore()
+  const { user, logout, currentGroupId } = useAuthStore()
   const { sidebarCollapsed, toggleSidebar } = useUIStore()
   const navigate = useNavigate()
+
+  const { data: subscription } = useQuery({
+    queryKey: ['subscription', currentGroupId],
+    queryFn: () => subscriptionsApi.getSubscription(currentGroupId!),
+    enabled: !!currentGroupId,
+  })
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
+
+  const planBadgeKey = subscription?.trialActive ? 'TRIAL' : (subscription?.effectivePlan ?? 'FREE')
+  const planBadge = planBadgeConfig[planBadgeKey] ?? planBadgeConfig.FREE
+  const trialLabel = subscription?.trialActive
+    ? `Trial - ${subscription.trialDaysLeft}d`
+    : planBadge.label
 
   return (
     <aside className={cn(
@@ -90,6 +111,18 @@ export default function Sidebar() {
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
           </div>
+        )}
+
+        {!sidebarCollapsed && subscription && (
+          <button
+            onClick={() => navigate('/plans')}
+            className={cn(
+              'w-full flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:opacity-80',
+              planBadge.className
+            )}
+          >
+            {trialLabel}
+          </button>
         )}
 
         <Button

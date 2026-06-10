@@ -25,6 +25,7 @@ public class CreditCardService {
     private final CreditCardInvoiceRepository invoiceRepository;
     private final FamilyGroupService familyGroupService;
     private final AccountRepository accountRepository;
+    private final SubscriptionService subscriptionService;
 
     public List<CreditCardResponse> findAll(UUID groupId, User currentUser) {
         familyGroupService.assertMember(groupId, currentUser.getId());
@@ -42,6 +43,7 @@ public class CreditCardService {
 
     public CreditCardResponse create(UUID groupId, CreditCardRequest req, User currentUser) {
         familyGroupService.assertRole(groupId, currentUser.getId(), MemberRole.EDITOR);
+        subscriptionService.checkCreditCardLimit(groupId);
         FamilyGroup group = new FamilyGroup();
         group.setId(groupId);
 

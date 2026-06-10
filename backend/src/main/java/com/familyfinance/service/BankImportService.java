@@ -44,6 +44,7 @@ public class BankImportService {
     private final AccountRepository       accountRepository;
     private final TransactionRepository   transactionRepository;
     private final UserRepository          userRepository;
+    private final SubscriptionService     subscriptionService;
 
     // ─── list ────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ public class BankImportService {
     @Transactional
     public BankImportResponse uploadAndParse(UUID groupId, UUID accountId,
                                              MultipartFile file, String userEmail) {
+        subscriptionService.checkImportLimit(groupId);
         FamilyGroup group = familyGroupRepository.findById(groupId)
                 .orElseThrow(() -> new NoSuchElementException("Group not found"));
 

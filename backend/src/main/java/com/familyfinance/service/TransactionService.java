@@ -30,6 +30,7 @@ public class TransactionService {
     private final CreditCardRepository creditCardRepository;
     private final TagRepository tagRepository;
     private final AccountService accountService;
+    private final SubscriptionService subscriptionService;
 
     public Page<TransactionResponse> getAll(UUID familyGroupId, int page, int size) {
         return transactionRepository.findByFamilyGroupIdOrderByTransactionDateDesc(
@@ -44,6 +45,7 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse create(UUID familyGroupId, TransactionRequest request, User currentUser) {
+        subscriptionService.checkTransactionLimit(familyGroupId);
         FamilyGroup group = new FamilyGroup();
         group.setId(familyGroupId);
 

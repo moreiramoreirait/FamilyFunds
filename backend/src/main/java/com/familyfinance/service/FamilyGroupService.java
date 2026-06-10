@@ -27,6 +27,7 @@ public class FamilyGroupService {
     private final FamilyGroupInviteRepository inviteRepository;
     private final UserRepository userRepository;
     private final CategoryService categoryService;
+    private final SubscriptionService subscriptionService;
 
     @Transactional
     public FamilyGroupResponse create(FamilyGroupRequest request, User currentUser) {
@@ -50,6 +51,9 @@ public class FamilyGroupService {
 
         // Create default categories
         categoryService.createDefaultCategories(group, currentUser);
+
+        // Create trial subscription
+        subscriptionService.createTrialSubscription(group);
 
         log.info("Family group created: {} by {}", group.getName(), currentUser.getEmail());
         return toResponse(group, MemberRole.ADMIN);
@@ -90,6 +94,7 @@ public class FamilyGroupService {
     @Transactional
     public void inviteMember(UUID groupId, InviteMemberRequest request, User currentUser) {
         assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
+        subscriptionService.checkMemberLimit(groupId);
 
         // Check if already a member
         userRepository.findByEmail(request.email()).ifPresent(u -> {
@@ -159,6 +164,10 @@ public class FamilyGroupService {
         return memberRepository.findByFamilyGroupIdAndUserId(groupId, userId)
                 .map(FamilyGroupMember::getRole)
                 .orElseThrow(() -> new UnauthorizedException("Not a member of this group"));
+    }
+
+    public void assertAdmin(UUID groupId, UUID userId) {
+        assertRole(groupId, userId, MemberRole.ADMIN);
     }
 
     public void assertRole(UUID groupId, UUID userId, MemberRole minimumRole) {

@@ -21,6 +21,7 @@ import java.util.UUID;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final SubscriptionService subscriptionService;
 
     public List<AccountResponse> getAll(UUID familyGroupId) {
         return accountRepository.findByFamilyGroupIdAndIsActiveTrueOrderByNameAsc(familyGroupId)
@@ -34,6 +35,7 @@ public class AccountService {
 
     @Transactional
     public AccountResponse create(UUID familyGroupId, AccountRequest request, User currentUser) {
+        subscriptionService.checkAccountLimit(familyGroupId);
         FamilyGroup group = new FamilyGroup();
         group.setId(familyGroupId);
 
