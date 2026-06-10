@@ -27,12 +27,13 @@ RUN chown appuser:appgroup app.jar
 
 USER appuser
 
-EXPOSE 8080
+EXPOSE 10000
 
-# JVM tuning for containers (Render free tier has 512MB RAM)
+# JVM tuning for containers (Render free tier: 512MB RAM, port 10000)
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:MaxRAMPercentage=70.0", \
+  "-XX:MaxMetaspaceSize=128m", \
   "-XX:+UseG1GC", \
   "-XX:+ExitOnOutOfMemoryError", \
   "-Djava.security.egd=file:/dev/./urandom", \
