@@ -9,7 +9,7 @@
 | Node.js | 20+ | Para o frontend |
 | PostgreSQL | 15+ | Ou use Supabase |
 
-> **Importante sobre Java**: Lombok 1.18.36 não é compatível com Java 25 (`TypeTag.UNKNOWN` removido).
+> **Java 25:** Lombok 1.18.36 não é compatível com Java 25 (`TypeTag.UNKNOWN` removido).
 > O projeto inclui `backend/mvn21.bat` e `backend/mvn21.sh` que forçam o uso do JDK 21.
 
 ---
@@ -23,23 +23,33 @@ cd backend
 cp .env.example .env
 # Editar .env com suas configurações
 
-# Compilar (com Java 25 instalado, use mvn21.bat)
-./mvn21.sh compile           # Linux/Mac
-mvn21.bat compile            # Windows
-
-# Rodar
-./mvn21.sh spring-boot:run
+# Compilar (com Java 25 instalado, use mvn21.bat/sh)
+./mvn21.sh spring-boot:run    # Linux/Mac
+mvn21.bat spring-boot:run     # Windows
 ```
 
 ### Variáveis de Ambiente Obrigatórias
 
 ```env
-DB_URL=jdbc:postgresql://localhost:5432/familyfinance
-DB_USERNAME=postgres
-DB_PASSWORD=senha123
-JWT_SECRET=sua-chave-jwt-de-64-chars
+DATABASE_URL=jdbc:postgresql://localhost:5432/familyfinance
+DATABASE_USERNAME=postgres
+DATABASE_PASSWORD=senha123
+JWT_SECRET=sua-chave-jwt-de-64-chars-minimo
 ENCRYPTION_KEY=sua-chave-criptografia-32-chars
+FRONTEND_URL=http://localhost:5173
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174
 ```
+
+### Variáveis Opcionais (e-mail)
+
+```env
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=seuemail@gmail.com
+MAIL_PASSWORD=sua-app-password-gmail
+```
+
+> Sem e-mail configurado o sistema funciona normalmente — convites e alertas são apenas logados.
 
 ---
 
@@ -51,10 +61,10 @@ cd frontend
 # Instalar dependências
 npm install
 
-# Criar arquivo de ambiente
+# Criar arquivo de ambiente (aponta para o backend local via proxy Vite)
 echo "VITE_API_URL=/api/v1" > .env.local
 
-# Rodar em desenvolvimento (usa proxy para localhost:8080)
+# Rodar em desenvolvimento
 npm run dev
 
 # Build de produção
@@ -65,13 +75,23 @@ npm run build
 
 ## Banco de Dados
 
-O Flyway executa as migrações automaticamente ao iniciar o backend:
+Flyway executa todas as migrações automaticamente ao iniciar o backend:
 
-| Migration | Tabelas |
+| Migration | Tabelas criadas |
 |---|---|
 | V1 | users, family_groups, family_group_members, invites, audit_logs |
 | V2 | categories, subcategories, cost_centers, tags, accounts, credit_cards, invoices |
 | V3 | transactions, transaction_tags, cc_purchases, budgets, notifications, ai_settings, bank_imports |
+| V4 | subscriptions (planos SaaS, trial, status) |
+| V5 | coluna `is_system_admin` na tabela users |
+
+### Configurar Admin do Sistema
+
+Após o primeiro deploy, execute no banco para ter acesso ao painel `/admin`:
+
+```sql
+UPDATE users SET is_system_admin = true WHERE email = 'admin@seudominio.com';
+```
 
 ---
 
@@ -79,16 +99,22 @@ O Flyway executa as migrações automaticamente ao iniciar o backend:
 
 | Serviço | Componente |
 |---|---|
-| Vercel | Frontend |
-| Render | Backend (Free tier) |
+| Vercel | Frontend (Root Dir: `frontend`) |
+| Render | Backend (Docker, free tier) |
 | Supabase | PostgreSQL |
 
-### Secrets necessários (GitHub Actions)
+### Variáveis Render (Backend)
+
+Obrigatórias: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `FLYWAY_URL`, `FLYWAY_USER`, `FLYWAY_PASSWORD`, `JWT_SECRET`, `ENCRYPTION_KEY`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`
+
+Opcionais: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+
+> **Não defina `PORT`** — o Render injeta `PORT=10000` automaticamente.
+
+### Variáveis Vercel (Frontend)
 
 ```
-VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
-RENDER_DEPLOY_HOOK_URL
-VITE_API_URL (ex: https://api.familyfinance.render.com/api/v1)
+VITE_API_URL=https://familyfunds-api.onrender.com/api/v1
 ```
 
 ---
@@ -97,9 +123,12 @@ VITE_API_URL (ex: https://api.familyfinance.render.com/api/v1)
 
 | Módulo | Prefixo |
 |---|---|
-| Auth | `POST /api/v1/auth/register`, `POST /api/v1/auth/login` |
+| Auth | `POST /api/v1/auth/register`, `/login`, `/forgot-password`, `/reset-password` |
 | Profile | `GET /api/v1/users/me` |
-| Family | `/api/v1/family-groups/**` |
+| Family Groups | `/api/v1/family-groups/**` |
+| Planos | `GET /api/v1/plans` (público) |
+| Assinatura | `/{groupId}/subscription/**` |
+| Admin sistema | `/api/v1/admin/**` (requer is_system_admin) |
 | Accounts | `/{groupId}/accounts/**` |
 | Transactions | `/{groupId}/transactions/**` |
 | Categories | `/{groupId}/categories/**` |
@@ -108,6 +137,7 @@ VITE_API_URL (ex: https://api.familyfinance.render.com/api/v1)
 | Tags | `/{groupId}/tags/**` |
 | Notifications | `/{groupId}/notifications/**` |
 | AI Settings | `/{groupId}/ai-settings/**` |
+| Bank Imports | `/{groupId}/bank-imports/**` |
 | Dashboard | `/{groupId}/dashboard` |
 
 Swagger UI: `http://localhost:8080/swagger-ui.html`

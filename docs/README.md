@@ -1,148 +1,170 @@
-# FinançasFamília — Sistema de Gestão Financeira Familiar
+# FamilyFunds — Sistema de Gestão Financeira Familiar SaaS
 
-Sistema completo de gestão financeira pessoal e familiar, inspirado em Mobills, Nubank e Inter.
+Sistema completo de gestão financeira pessoal e familiar, multi-tenant SaaS com planos e limites de uso. Inspirado em Mobills, Nubank e Inter.
+
+**Produção:**
+- Frontend: https://family-funds-eight.vercel.app
+- Backend API: https://familyfunds-api.onrender.com/api/v1
+- Swagger UI: https://familyfunds-api.onrender.com/swagger-ui.html
 
 ---
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 ```
 /
-├── backend/          # Java Spring Boot 3 API REST
-├── frontend/         # React + TypeScript + Vite + Tailwind
+├── backend/          # Java 21 + Spring Boot 3 — API REST
+├── frontend/         # React 18 + TypeScript + Vite + Tailwind
 └── docs/             # Documentação
 ```
 
-## 🚀 Stack Tecnológico
+O sistema é **multi-tenant por grupo familiar** (`family_group_id`). Cada grupo tem seu próprio conjunto de dados (contas, lançamentos, categorias) e uma assinatura de plano.
+
+---
+
+## Stack
 
 ### Backend
 - **Java 21** + **Spring Boot 3.2**
-- **PostgreSQL** via Supabase
-- **Flyway** — migrações de banco
-- **JWT** — autenticação stateless
-- **Swagger/OpenAPI** — documentação da API
-- **BCrypt** — hash de senhas
-- **MapStruct** + **Lombok** — redução de boilerplate
-- Deploy: **Render**
+- **PostgreSQL** via Supabase (Session Pooler, porta 5432)
+- **Flyway** — migrações automáticas
+- **JWT** stateless + **BCrypt**
+- **Spring Mail** (SMTP) — convites e alertas
+- **Swagger/OpenAPI** — docs interativa
+- **Lombok** + **Validation (Bean)**
+- Deploy: **Render** (Docker, free tier 512 MB)
 
 ### Frontend
 - **React 18** + **TypeScript**
 - **Vite** — build tool
-- **Tailwind CSS** + **Shadcn/UI** — design system
-- **React Query** — cache e sincronização de dados
-- **Zustand** — estado global
-- **React Hook Form** + **Zod** — formulários
+- **Tailwind CSS** + **Shadcn/UI**
+- **React Query** — cache e sincronização
+- **Zustand** — estado global (auth + grupo atual)
+- **React Hook Form** + **Zod** — formulários tipados
 - **Recharts** — gráficos
 - **Axios** — cliente HTTP
 - Deploy: **Vercel**
 
 ---
 
-## ⚡ Setup Local
+## Setup Local
 
 ### Pré-requisitos
-- Java 21+
-- Node.js 18+
-- PostgreSQL 14+ (ou conta Supabase)
-- Maven 3.8+
+- Java 21 (Temurin recomendado)
+- Node.js 20+
+- PostgreSQL 15+ ou conta Supabase
+- Maven 3.9+ (wrapper incluído)
 
 ### Backend
 
 ```bash
 cd backend
-
-# Copiar variáveis de ambiente
-cp .env.example .env
-# Editar .env com suas configurações
-
-# Criar banco de dados
-createdb familyfinance
-
-# Compilar e rodar
+cp .env.example .env   # editar com suas configurações
 ./mvnw spring-boot:run
+# API: http://localhost:8080
+# Swagger: http://localhost:8080/swagger-ui.html
 ```
 
-A API ficará disponível em: `http://localhost:8080`
-Swagger UI: `http://localhost:8080/swagger-ui.html`
+> Com Java 25 instalado use `mvn21.bat` (Windows) ou `mvn21.sh` (Linux/Mac) — Lombok não é compatível com Java 25.
 
 ### Frontend
 
 ```bash
 cd frontend
-
-# Instalar dependências
 npm install
-
-# Copiar variáveis de ambiente
-cp .env.example .env.local
-
-# Iniciar em desenvolvimento
+echo "VITE_API_URL=/api/v1" > .env.local
 npm run dev
+# App: http://localhost:5173
 ```
-
-A aplicação ficará disponível em: `http://localhost:5173`
 
 ---
 
-## 🗄️ Banco de Dados
+## Banco de Dados
 
-### Migrations (Flyway)
-As migrações são executadas automaticamente ao iniciar o backend:
+### Migrações Flyway (automáticas na inicialização)
 
-- `V1__create_users_and_families.sql` — Usuários e grupos familiares
-- `V2__create_financial_core.sql` — Contas, categorias, cartões
-- `V3__create_transactions.sql` — Lançamentos, faturas, orçamentos
+| Migration | Conteúdo |
+|-----------|----------|
+| `V1` | users, family_groups, family_group_members, family_group_invites, audit_logs |
+| `V2` | categories, subcategories, cost_centers, tags, accounts, credit_cards, invoices |
+| `V3` | transactions, transaction_tags, cc_purchases, budgets, notifications, ai_settings, bank_imports |
+| `V4` | **subscriptions** (planos SaaS, status, trial) |
+| `V5` | `is_system_admin` na tabela users |
 
 ### Principais tabelas
 
 | Tabela | Descrição |
 |--------|-----------|
-| `users` | Usuários do sistema |
-| `family_groups` | Grupos familiares |
-| `family_group_members` | Membros de cada grupo |
-| `family_group_invites` | Convites pendentes |
+| `users` | Usuários (campo `is_system_admin` para acesso ao painel admin) |
+| `family_groups` | Grupos familiares (tenant) |
+| `family_group_members` | Membros com papel ADMIN/EDITOR/VIEWER |
+| `family_group_invites` | Convites por e-mail com token |
+| `subscriptions` | Plano e status de cada grupo (FREE/PRO/BUSINESS + TRIAL) |
 | `accounts` | Contas bancárias |
-| `categories` | Categorias de lançamentos |
-| `subcategories` | Subcategorias |
-| `tags` | Tags para lançamentos |
-| `cost_centers` | Centros de custo |
+| `categories` / `subcategories` | Categorias de lançamentos |
 | `transactions` | Lançamentos financeiros |
-| `transaction_tags` | Relacionamento transação-tag |
-| `credit_cards` | Cartões de crédito |
-| `credit_card_invoices` | Faturas dos cartões |
-| `credit_card_purchases` | Compras no cartão |
+| `credit_cards` / `credit_card_invoices` | Cartões e faturas |
 | `budgets` | Orçamentos mensais |
-| `bank_imports` | Importações de extrato |
-| `bank_import_items` | Itens de importação |
+| `bank_imports` | Importações CSV/OFX/XLSX |
 | `notifications` | Notificações internas |
-| `ai_settings` | Configurações de IA |
-| `audit_logs` | Log de auditoria |
+| `ai_settings` | Configurações de IA por grupo |
 
 ---
 
-## 🔐 Segurança
+## SaaS Multi-Tenant
 
-- **JWT Bearer Token** — todas as rotas protegidas exceto `/api/v1/auth/**`
-- **BCrypt** — hash de senhas
-- **CORS** configurado por variável de ambiente
-- **Rate limiting** — proteção contra abuso
-- **Input validation** — Bean Validation no backend + Zod no frontend
-- **Isolamento por família** — todos dados filtrados por `family_group_id`
-- **RBAC** — Admin / Editor / Viewer com verificação no backend
+### Planos
 
----
+| Feature | FREE | PRO | BUSINESS |
+|---------|------|-----|----------|
+| Usuários | 2 | 10 | Ilimitado |
+| Contas bancárias | 3 | 15 | Ilimitado |
+| Cartões de crédito | 1 | 5 | Ilimitado |
+| Lançamentos/mês | 50 | 1.000 | Ilimitado |
+| Importações/mês | 0 | 10 | Ilimitado |
+| Integração IA | Não | Sim | Sim |
+| Relatórios avançados | Não | Sim | Sim |
+| Preço | Grátis | R$ 29,90/mês | R$ 79,90/mês |
 
-## 📡 API Endpoints
+**Trial:** todo novo grupo ganha automaticamente 14 dias do plano PRO.
 
-### Auth
+### Limites enforcement
+- `SubscriptionService` verifica limites antes de criar contas, cartões, membros e lançamentos
+- Ao atingir 80% do limite mensal de lançamentos, o admin do grupo recebe e-mail de aviso (async)
+- Cron diário (03h) expira trials vencidos
+
+### Tornar um usuário administrador do sistema
+```sql
+UPDATE users SET is_system_admin = true WHERE email = 'admin@seudominio.com';
 ```
-POST /api/v1/auth/register    — Cadastro
-POST /api/v1/auth/login       — Login
+
+---
+
+## Segurança
+
+- **JWT Bearer Token** — todas as rotas exceto `/api/v1/auth/**` e `/api/v1/plans`
+- **BCrypt** — hash de senhas
+- **CORS** configurado via variável de ambiente `CORS_ALLOWED_ORIGINS`
+- **Bean Validation** no backend + **Zod** no frontend
+- **Isolamento por tenant** — todos os dados filtrados por `family_group_id`
+- **RBAC** — ADMIN / EDITOR / VIEWER, verificado no backend
+- **Admin do sistema** — rotas `/api/v1/admin/**` exigem `is_system_admin = true`
+
+---
+
+## API Endpoints
+
+### Auth (público)
+```
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/forgot-password
+POST /api/v1/auth/reset-password
 ```
 
 ### Usuário
 ```
-GET  /api/v1/users/me         — Perfil atual
+GET  /api/v1/users/me
 ```
 
 ### Grupos Familiares
@@ -151,8 +173,24 @@ GET    /api/v1/family-groups
 POST   /api/v1/family-groups
 GET    /api/v1/family-groups/{id}
 PUT    /api/v1/family-groups/{id}
-POST   /api/v1/family-groups/{id}/invite
+POST   /api/v1/family-groups/{id}/invite           — envia e-mail de convite
 POST   /api/v1/family-groups/invites/{token}/accept
+```
+
+### Planos e Assinaturas
+```
+GET  /api/v1/plans                                           — lista planos (público)
+GET  /api/v1/family-groups/{id}/subscription                 — assinatura do grupo
+GET  /api/v1/family-groups/{id}/subscription/usage           — uso atual vs limites
+POST /api/v1/family-groups/{id}/subscription/upgrade?plan=   — upgrade (ADMIN)
+POST /api/v1/family-groups/{id}/subscription/cancel          — cancelar (ADMIN)
+```
+
+### Admin do Sistema (requer is_system_admin)
+```
+GET  /api/v1/admin/groups
+GET  /api/v1/admin/stats
+POST /api/v1/admin/groups/{id}/plan?plan=
 ```
 
 ### Dashboard
@@ -164,7 +202,6 @@ GET /api/v1/family-groups/{groupId}/dashboard
 ```
 GET    /api/v1/family-groups/{groupId}/accounts
 POST   /api/v1/family-groups/{groupId}/accounts
-GET    /api/v1/family-groups/{groupId}/accounts/{id}
 PUT    /api/v1/family-groups/{groupId}/accounts/{id}
 DELETE /api/v1/family-groups/{groupId}/accounts/{id}
 ```
@@ -180,7 +217,7 @@ PATCH  /api/v1/family-groups/{groupId}/transactions/{id}/pay
 DELETE /api/v1/family-groups/{groupId}/transactions/{id}
 ```
 
-### Categorias
+### Categorias / Subcategorias
 ```
 GET    /api/v1/family-groups/{groupId}/categories
 POST   /api/v1/family-groups/{groupId}/categories
@@ -188,60 +225,87 @@ PUT    /api/v1/family-groups/{groupId}/categories/{id}
 DELETE /api/v1/family-groups/{groupId}/categories/{id}
 ```
 
-### Centros de Custo
+### Cartões de Crédito
 ```
-GET    /api/v1/family-groups/{groupId}/cost-centers
-POST   /api/v1/family-groups/{groupId}/cost-centers
-PUT    /api/v1/family-groups/{groupId}/cost-centers/{id}
-DELETE /api/v1/family-groups/{groupId}/cost-centers/{id}
+GET    /api/v1/family-groups/{groupId}/credit-cards
+POST   /api/v1/family-groups/{groupId}/credit-cards
+PUT    /api/v1/family-groups/{groupId}/credit-cards/{id}
+GET    /api/v1/family-groups/{groupId}/credit-cards/{id}/invoices
+```
+
+### Outros módulos
+```
+/{groupId}/cost-centers/**     — Centros de custo
+/{groupId}/budgets/**          — Orçamentos mensais
+/{groupId}/tags/**             — Tags
+/{groupId}/notifications/**    — Notificações internas
+/{groupId}/ai-settings/**      — Config. de IA
+/{groupId}/bank-imports/**     — Importação CSV/OFX/XLSX
 ```
 
 ---
 
-## 🚢 Deploy
+## Deploy
+
+### Variáveis de Ambiente — Render (Backend)
+
+| Variável | Obrigatória | Descrição |
+|----------|-------------|-----------|
+| `DATABASE_URL` | Sim | JDBC URL Supabase (Session Pooler) |
+| `DATABASE_USERNAME` | Sim | Usuário do banco |
+| `DATABASE_PASSWORD` | Sim | Senha do banco |
+| `FLYWAY_URL` | Sim | Mesma que DATABASE_URL (conexão direta) |
+| `FLYWAY_USER` | Sim | Mesmo que DATABASE_USERNAME |
+| `FLYWAY_PASSWORD` | Sim | Mesmo que DATABASE_PASSWORD |
+| `JWT_SECRET` | Sim | Gerado pelo Render |
+| `ENCRYPTION_KEY` | Sim | Gerado pelo Render |
+| `FRONTEND_URL` | Sim | URL do Vercel |
+| `CORS_ALLOWED_ORIGINS` | Sim | URLs permitidas pelo CORS |
+| `MAIL_HOST` | Não | smtp.gmail.com |
+| `MAIL_PORT` | Não | 587 |
+| `MAIL_USERNAME` | Não | E-mail para envio |
+| `MAIL_PASSWORD` | Não | App password Gmail |
+
+> **Nota:** Não defina `PORT` — o Render injeta `PORT=10000` automaticamente.
 
 ### Frontend → Vercel
-1. Conectar repositório no Vercel
-2. Configurar: `VITE_API_URL=https://familyfunds-api.onrender.com/api/v1`
-3. Build command: `npm run build`
-4. Output dir: `dist`
-
-### Backend → Render
-1. Novo Web Service no Render
-2. Build command: `mvn clean package -DskipTests`
-3. Start command: `java -jar target/family-finance-api-1.0.0.jar`
-4. Configurar variáveis de ambiente (`.env.example`)
+1. Root Directory: `frontend`
+2. `VITE_API_URL=https://familyfunds-api.onrender.com/api/v1`
 
 ### Banco → Supabase
-1. Criar projeto no Supabase
-2. Copiar connection string para `DATABASE_URL`
-3. As migrações Flyway rodam automaticamente na primeira inicialização
+As migrações V1–V5 rodam automaticamente via Flyway na primeira inicialização.
 
 ---
 
-## 🎯 MVP — Funcionalidades Implementadas
+## Funcionalidades
 
-- [x] Autenticação JWT (login / cadastro)
-- [x] Grupos familiares (criar, editar, convidar membros)
-- [x] Permissões por papel (ADMIN / EDITOR / VIEWER)
+### Implementadas
+- [x] Autenticação JWT (login / cadastro / recuperação de senha)
+- [x] Grupos familiares com convites por e-mail
+- [x] RBAC: ADMIN / EDITOR / VIEWER
 - [x] Dashboard com KPIs e gráficos
 - [x] Contas bancárias (CRUD)
-- [x] Lançamentos — Receitas e Despesas (CRUD + paginação)
+- [x] Lançamentos — receitas, despesas, transferências
 - [x] Parcelamento de lançamentos
-- [x] Marcar como pago
-- [x] Categorias com subcategorias (CRUD + categorias padrão)
-- [x] Centros de custo (CRUD)
-- [x] Tags
-- [x] Interface Responsiva (Dark/Light mode)
+- [x] Marcar como pago + atualização de saldo
+- [x] Categorias com ícones e subcategorias
+- [x] Centros de custo e Tags
+- [x] Cartões de crédito e faturas
+- [x] Importação CSV / OFX / XLSX
+- [x] Orçamentos mensais com alertas
+- [x] Notificações internas (vencimentos)
+- [x] **Planos SaaS (FREE / PRO / BUSINESS)** com trial de 14 dias
+- [x] **Enforcement de limites** por plano
+- [x] **Dashboard de uso** com barras de progresso
+- [x] **Painel Admin** do sistema (grupos, stats, MRR)
+- [x] **E-mails de convite** e alertas de limite de uso
 - [x] Swagger UI documentado
+- [x] Dark/Light mode
 
-## 🔮 Próximas Evoluções
-
-- [ ] Cartões de crédito + Faturas
-- [ ] Importação CSV/OFX/XLSX
-- [ ] Integração com IA (OpenAI, Claude, Gemini)
-- [ ] Orçamento mensal com alertas
-- [ ] Relatórios detalhados (PDF, Excel)
-- [ ] Notificações por e-mail / WhatsApp
+### Roadmap
+- [ ] Pagamento via Stripe (Fase 3)
+- [ ] Integração com IA (OpenAI / Claude) — disponível no plano PRO+
+- [ ] Relatórios em PDF / Excel
 - [ ] Aplicativo Mobile (React Native)
 - [ ] Open Finance / PIX
+- [ ] Notificações WhatsApp
