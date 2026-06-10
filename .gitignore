@@ -1,0 +1,43 @@
+# ─── Secrets / Env ────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env.local
+
+# ─── Java / Maven ─────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ─── Node / npm ───────────────────────────────────────────────────────────────
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ─── Vite / Build ────────────────────────────────────────────────────────────
+frontend/dist/
+frontend/.vite/
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Docker volumes ───────────────────────────────────────────────────────────
+docker/pgadmin-data/
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
+logs/

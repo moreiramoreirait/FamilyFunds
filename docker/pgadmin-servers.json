@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "FamilyFinance Local",
+      "Group": "Docker",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "familyfinance",
+      "Username": "postgres",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass"
+    }
+  }
+}
