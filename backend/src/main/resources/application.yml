@@ -29,7 +29,11 @@ spring:
         jdbc:
           lob:
             non_contextual_creation: true
-    open-in-view: false
+    # Mantém a sessão Hibernate aberta durante a renderização da resposta.
+    # Necessário porque vários endpoints de leitura serializam associações
+    # LAZY (ex: membros do grupo, conta/categoria do lançamento) fora de um
+    # contexto @Transactional. Sem isso → LazyInitializationException (HTTP 500).
+    open-in-view: true
 
   flyway:
     enabled: true

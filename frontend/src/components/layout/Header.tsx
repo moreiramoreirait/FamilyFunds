@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Bell, Moon, Sun, Menu, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUIStore } from '@/store/uiStore'
@@ -17,6 +18,16 @@ export default function Header() {
     queryKey: ['family-groups'],
     queryFn: familyGroupsApi.list,
   })
+
+  // Garante que sempre haja um grupo selecionado: se nenhum foi escolhido
+  // (login novo, storage limpo) ou o atual aponta para um grupo inexistente,
+  // seleciona o primeiro. Sem isso, mutações que usam currentGroupId direto
+  // (ex: criar lançamento) enviariam "null" e falhariam.
+  useEffect(() => {
+    if (groups.length === 0) return
+    const validSelection = groups.some(g => g.id === currentGroupId)
+    if (!validSelection) setCurrentGroup(groups[0].id)
+  }, [groups, currentGroupId, setCurrentGroup])
 
   const currentGroup = groups.find(g => g.id === currentGroupId) || groups[0]
 

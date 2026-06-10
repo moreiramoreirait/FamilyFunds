@@ -60,6 +60,7 @@ public class FamilyGroupService {
         return toResponse(group, MemberRole.ADMIN);
     }
 
+    @Transactional(readOnly = true)
     public List<FamilyGroupResponse> getUserGroups(User currentUser) {
         return familyGroupRepository.findByMemberUserId(currentUser.getId())
                 .stream()
@@ -72,6 +73,7 @@ public class FamilyGroupService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public FamilyGroupResponse getById(UUID groupId, User currentUser) {
         FamilyGroup group = familyGroupRepository.findById(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("FamilyGroup", "id", groupId));

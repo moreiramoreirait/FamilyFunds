@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast'
 import { transactionsApi } from '@/api/transactions'
 import { categoriesApi } from '@/api/categories'
 import { accountsApi } from '@/api/accounts'
+import { familyGroupsApi } from '@/api/familyGroups'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
@@ -65,16 +66,24 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
   const { toast } = useToast()
   const isEdit = !!transaction
 
+  // Fallback: se nenhum grupo foi selecionado ainda, usa o primeiro do usuário.
+  // Evita enviar "null" como groupId ao criar/editar lançamentos.
+  const { data: groups = [] } = useQuery({
+    queryKey: ['family-groups'],
+    queryFn: familyGroupsApi.list,
+  })
+  const groupId = currentGroupId || groups[0]?.id
+
   const { data: categories = [] } = useQuery({
-    queryKey: ['categories', currentGroupId],
-    queryFn: () => categoriesApi.list(currentGroupId!),
-    enabled: !!currentGroupId,
+    queryKey: ['categories', groupId],
+    queryFn: () => categoriesApi.list(groupId!),
+    enabled: !!groupId,
   })
 
   const { data: accounts = [] } = useQuery({
-    queryKey: ['accounts', currentGroupId],
-    queryFn: () => accountsApi.list(currentGroupId!),
-    enabled: !!currentGroupId,
+    queryKey: ['accounts', groupId],
+    queryFn: () => accountsApi.list(groupId!),
+    enabled: !!groupId,
   })
 
   const {
@@ -148,11 +157,14 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         notes: data.notes || undefined,
         installmentTotal: isInstallment ? parseInt(data.installments || '2') : undefined,
       }
+      if (!groupId) {
+        throw new Error('Nenhum grupo familiar selecionado. Crie ou selecione uma família primeiro.')
+      }
       return isEdit
-        ? transactionsApi.update(currentGroupId!, transaction!.id, payload)
+        ? transactionsApi.update(groupId, transaction!.id, payload)
         : isInstallment
-          ? transactionsApi.createInstallments(currentGroupId!, payload)
-          : transactionsApi.create(currentGroupId!, payload)
+          ? transactionsApi.createInstallments(groupId, payload)
+          : transactionsApi.create(groupId, payload)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
@@ -164,7 +176,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
       onClose()
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message || 'Não foi possível salvar o lançamento.'
+      const msg = err?.response?.data?.message || err?.message || 'Não foi possível salvar o lançamento.'
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     },
   })
