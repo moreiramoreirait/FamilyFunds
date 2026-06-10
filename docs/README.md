@@ -202,7 +202,7 @@ DELETE /api/v1/family-groups/{groupId}/cost-centers/{id}
 
 ### Frontend → Vercel
 1. Conectar repositório no Vercel
-2. Configurar: `VITE_API_URL=https://sua-api.onrender.com/api/v1`
+2. Configurar: `VITE_API_URL=https://familyfunds-api.onrender.com/api/v1`
 3. Build command: `npm run build`
 4. Output dir: `dist`
 
