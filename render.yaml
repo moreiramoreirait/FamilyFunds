@@ -42,9 +42,6 @@ services:
       - key: MAIL_PASSWORD
         sync: false
 
-      - key: PORT
-        value: "8080"
-
     healthCheckPath: /actuator/health
 
     autoDeploy: true
