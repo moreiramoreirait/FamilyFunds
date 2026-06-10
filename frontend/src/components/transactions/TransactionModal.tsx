@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import {
+  Car, Utensils, BookOpen, TrendingUp, Smile, Home, MoreHorizontal,
+  Heart, Shirt, Briefcase, Circle,
+} from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +21,18 @@ import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
 
+const ICON_MAP: Record<string, React.ElementType> = {
+  'car': Car, 'utensils': Utensils, 'book-open': BookOpen,
+  'trending-up': TrendingUp, 'smile': Smile, 'home': Home,
+  'more-horizontal': MoreHorizontal, 'heart': Heart,
+  'shirt': Shirt, 'briefcase': Briefcase,
+}
+
+function CategoryIcon({ icon, className = 'h-4 w-4 inline-block mr-1.5' }: { icon?: string; className?: string }) {
+  const Icon = (icon && ICON_MAP[icon]) ? ICON_MAP[icon] : Circle
+  return <Icon className={className} />
+}
+
 const schema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
   amount: z.string().min(1, 'Valor é obrigatório'),
@@ -24,6 +40,7 @@ const schema = z.object({
   transactionDate: z.string().min(1, 'Data é obrigatória'),
   dueDate: z.string().optional(),
   categoryId: z.string().optional(),
+  subcategoryId: z.string().optional(),
   accountId: z.string().optional(),
   status: z.enum(['PENDING', 'PAID', 'CANCELLED']),
   notes: z.string().optional(),
@@ -61,7 +78,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
   })
 
   const {
-    register, handleSubmit, control, watch, reset, formState: { errors },
+    register, handleSubmit, control, watch, reset, setValue, formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -82,6 +99,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         transactionDate: transaction.transactionDate,
         dueDate: transaction.dueDate || '',
         categoryId: transaction.categoryId || '',
+        subcategoryId: (transaction as any).subcategoryId || '',
         accountId: transaction.accountId || '',
         status: transaction.status as any,
         notes: transaction.notes || '',
@@ -100,8 +118,20 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
   }, [transaction, defaultType, reset])
 
   const selectedType = watch('type')
+  const selectedCategoryId = watch('categoryId')
   const isInstallment = watch('isInstallment')
-  const isRecurrent = watch('isRecurrent')
+
+  const selectedCategory = categories.find(c => c.id === selectedCategoryId)
+  const subcategories = selectedCategory?.subcategories ?? []
+
+  // Reset subcategory when category changes
+  useEffect(() => {
+    setValue('subcategoryId', '')
+  }, [selectedCategoryId, setValue])
+
+  const filteredCategories = categories.filter(c =>
+    c.type === selectedType || c.type === 'BOTH'
+  )
 
   const mutation = useMutation<unknown, Error, FormData>({
     mutationFn: (data: FormData) => {
@@ -112,10 +142,11 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         transactionDate: data.transactionDate,
         dueDate: data.dueDate || undefined,
         categoryId: data.categoryId || undefined,
+        subcategoryId: data.subcategoryId || undefined,
         accountId: data.accountId || undefined,
         status: data.status,
         notes: data.notes || undefined,
-        installmentCount: isInstallment ? parseInt(data.installments || '1') : undefined,
+        installmentTotal: isInstallment ? parseInt(data.installments || '2') : undefined,
       }
       return isEdit
         ? transactionsApi.update(currentGroupId!, transaction!.id, payload)
@@ -132,14 +163,11 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
       })
       onClose()
     },
-    onError: () => {
-      toast({ title: 'Erro', description: 'Não foi possível salvar o lançamento.', variant: 'destructive' })
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || 'Não foi possível salvar o lançamento.'
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
     },
   })
-
-  const filteredCategories = categories.filter(c =>
-    c.type === selectedType || c.type === 'BOTH'
-  )
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -182,20 +210,12 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="amount">Valor *</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0,00"
-                {...register('amount')}
-              />
+              <Input id="amount" type="number" step="0.01" min="0" placeholder="0,00" {...register('amount')} />
               {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="transactionDate">Data *</Label>
               <Input id="transactionDate" type="date" {...register('transactionDate')} />
-              {errors.transactionDate && <p className="text-xs text-destructive">{errors.transactionDate.message}</p>}
             </div>
           </div>
 
@@ -205,10 +225,17 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
               <Label>Categoria</Label>
               <Controller name="categoryId" control={control} render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar..." />
+                  </SelectTrigger>
                   <SelectContent>
                     {filteredCategories.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        <span className="flex items-center gap-1.5">
+                          <CategoryIcon icon={c.icon} className="h-3.5 w-3.5 inline-block" />
+                          {c.name}
+                        </span>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -228,6 +255,23 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
               )} />
             </div>
           </div>
+
+          {/* Subcategory — only shown when category has subcategories */}
+          {subcategories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Subcategoria</Label>
+              <Controller name="subcategoryId" control={control} render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar subcategoria..." /></SelectTrigger>
+                  <SelectContent>
+                    {subcategories.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )} />
+            </div>
+          )}
 
           {/* Status + Due date */}
           <div className="grid grid-cols-2 gap-3">
@@ -268,14 +312,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
               {isInstallment && (
                 <div className="space-y-1.5">
                   <Label htmlFor="installments">Número de parcelas</Label>
-                  <Input
-                    id="installments"
-                    type="number"
-                    min="2"
-                    max="60"
-                    placeholder="Ex: 12"
-                    {...register('installments')}
-                  />
+                  <Input id="installments" type="number" min="2" max="60" placeholder="Ex: 12" {...register('installments')} />
                 </div>
               )}
             </div>
