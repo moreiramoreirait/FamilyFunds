@@ -32,6 +32,12 @@ public class Subscription {
     private LocalDateTime currentPeriodEnd;
     private LocalDateTime cancelledAt;
 
+    @Column(name = "stripe_customer_id")
+    private String stripeCustomerId;
+
+    @Column(name = "stripe_subscription_id")
+    private String stripeSubscriptionId;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

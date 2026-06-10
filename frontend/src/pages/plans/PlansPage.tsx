@@ -165,20 +165,27 @@ export default function PlansPage() {
     queryFn: subscriptionsApi.listPlans,
   })
 
-  const upgradeMutation = useMutation({
-    mutationFn: (plan: string) => subscriptionsApi.upgrade(currentGroupId!, plan),
+  const checkoutMutation = useMutation({
+    mutationFn: (plan: string) => subscriptionsApi.createCheckout(currentGroupId!, plan),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['subscription', currentGroupId] })
-      toast({ title: `Upgrade para ${data.displayName} realizado com sucesso!` })
+      window.location.href = data.url
     },
     onError: (e: any) =>
       toast({
-        title: e?.response?.data?.message || 'Erro ao fazer upgrade',
+        title: e?.response?.data?.message || 'Erro ao iniciar pagamento',
         variant: 'destructive',
       }),
   })
 
+  const portalMutation = useMutation({
+    mutationFn: () => subscriptionsApi.createPortal(currentGroupId!),
+    onSuccess: (data) => { window.location.href = data.url },
+    onError: (e: any) =>
+      toast({ title: e?.response?.data?.message || 'Erro ao abrir portal', variant: 'destructive' }),
+  })
+
   const isLoading = loadingSub || loadingPlans
+  const isUpgrading = checkoutMutation.isPending
 
   const orderedPlans = [...plans].sort(
     (a, b) => (PLAN_ORDER[a.type] ?? 0) - (PLAN_ORDER[b.type] ?? 0)
@@ -208,13 +215,21 @@ export default function PlansPage() {
 
       {/* Current plan summary */}
       {subscription && (
-        <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground flex-wrap">
           <span>Plano atual:</span>
           <Badge className={cn('text-xs', planConfig[subscription.effectivePlan]?.badgeClass)}>
             {subscription.displayName}
           </Badge>
           {subscription.currentPeriodEnd && (
             <span>· Renovação em {new Date(subscription.currentPeriodEnd).toLocaleDateString('pt-BR')}</span>
+          )}
+          {subscription.plan !== 'FREE' && (
+            <button
+              onClick={() => portalMutation.mutate()}
+              className="text-xs underline text-muted-foreground hover:text-foreground"
+            >
+              Gerenciar faturamento
+            </button>
           )}
         </div>
       )}
@@ -235,8 +250,8 @@ export default function PlansPage() {
               key={plan.type}
               plan={plan}
               subscription={subscription}
-              onUpgrade={(planType) => upgradeMutation.mutate(planType)}
-              isUpgrading={upgradeMutation.isPending}
+              onUpgrade={(planType) => checkoutMutation.mutate(planType)}
+              isUpgrading={isUpgrading}
             />
           ))}
         </div>

@@ -130,6 +130,15 @@ public class SubscriptionService {
         }
     }
 
+    public void checkAdvancedReportsAccess(UUID familyGroupId) {
+        PlanType plan = getEffectivePlan(familyGroupId);
+        if (!plan.isAdvancedReports()) {
+            throw new BusinessException(
+                "Relatórios avançados não estão disponíveis no plano " + plan.getDisplayName() +
+                ". Faça upgrade para o plano Premium.");
+        }
+    }
+
     public void checkAiAccess(UUID familyGroupId) {
         PlanType plan = getEffectivePlan(familyGroupId);
         if (!plan.isAiEnabled()) {

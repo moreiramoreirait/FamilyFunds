@@ -80,6 +80,12 @@ server:
     connection-timeout: 20000
     keep-alive-timeout: 30000
 
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY:}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+  price-essencial: ${STRIPE_PRICE_ESSENCIAL:}
+  price-premium: ${STRIPE_PRICE_PREMIUM:}
+
 app:
   jwt:
     secret: ${JWT_SECRET:bXlWZXJ5TG9uZ1NlY3JldEtleUZvckpXVFRva2VuR2VuZXJhdGlvblRoYXRJc0F0TGVhc3QyNTZCaXRzTG9uZw==}

@@ -12,4 +12,6 @@ import java.util.UUID;
 public interface SubscriptionRepository extends JpaRepository<Subscription, UUID> {
     Optional<Subscription> findByFamilyGroupId(UUID familyGroupId);
     List<Subscription> findByStatus(SubscriptionStatus status);
+    Optional<Subscription> findByStripeCustomerId(String stripeCustomerId);
+    Optional<Subscription> findByStripeSubscriptionId(String stripeSubscriptionId);
 }

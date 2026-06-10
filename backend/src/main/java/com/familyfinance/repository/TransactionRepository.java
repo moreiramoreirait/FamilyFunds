@@ -54,6 +54,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
 
     long countByFamilyGroupIdAndCreatedAtBetween(UUID familyGroupId, LocalDateTime start, LocalDateTime end);
 
+    List<Transaction> findByFamilyGroupIdAndTransactionDateBetweenAndStatus(
+            UUID familyGroupId, LocalDate start, LocalDate end, TransactionStatus status);
+
     @Query(value = "SELECT DATE_TRUNC('month', t.transaction_date) as month, " +
             "SUM(CASE WHEN t.type = 'INCOME' THEN t.amount ELSE 0 END) as income, " +
             "SUM(CASE WHEN t.type = 'EXPENSE' THEN t.amount ELSE 0 END) as expense " +

@@ -67,4 +67,10 @@ export const subscriptionsApi = {
 
   listPlans: () =>
     apiClient.get<Plan[]>('/plans').then(r => r.data),
+
+  createCheckout: (groupId: string, plan: string) =>
+    apiClient.post<{ url: string }>(`/family-groups/${groupId}/subscription/checkout?plan=${plan}`).then(r => r.data),
+
+  createPortal: (groupId: string) =>
+    apiClient.post<{ url: string }>(`/family-groups/${groupId}/subscription/portal`).then(r => r.data),
 }

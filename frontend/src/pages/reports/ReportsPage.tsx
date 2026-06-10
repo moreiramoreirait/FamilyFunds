@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Download, BarChart2, TrendingUp, TrendingDown, PieChart as PieChartIcon } from 'lucide-react'
+import { Download, BarChart2, TrendingUp, TrendingDown, FileSpreadsheet, FileText } from 'lucide-react'
 import { dashboardApi } from '@/api/dashboard'
+import { reportsApi } from '@/api/reports'
 import { useAuthStore } from '@/store/authStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useToast } from '@/hooks/use-toast'
 import { formatCurrency, cn } from '@/lib/utils'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -31,7 +33,31 @@ function downloadCSV(data: object[], filename: string) {
 
 export default function ReportsPage() {
   const { currentGroupId } = useAuthStore()
+  const { toast } = useToast()
   const [year, setYear] = useState(String(currentYear))
+  const [activeTab, setActiveTab] = useState('monthly')
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  const handleDownload = async (type: 'cash-flow' | 'categories', format: 'excel' | 'pdf') => {
+    if (!currentGroupId) return
+    const key = `${type}-${format}`
+    setDownloading(key)
+    try {
+      if (type === 'cash-flow') {
+        format === 'excel'
+          ? await reportsApi.downloadCashFlowExcel(currentGroupId, Number(year))
+          : await reportsApi.downloadCashFlowPdf(currentGroupId, Number(year))
+      } else {
+        format === 'excel'
+          ? await reportsApi.downloadCategoryExcel(currentGroupId, Number(year))
+          : await reportsApi.downloadCategoryPdf(currentGroupId, Number(year))
+      }
+    } catch (e: any) {
+      toast({ title: e?.response?.data?.message || 'Erro ao exportar relatório', variant: 'destructive' })
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard', currentGroupId],
@@ -66,9 +92,9 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Análise detalhada das suas finanças</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 flex-wrap items-center">
           <Select value={year} onValueChange={setYear}>
-            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
             <SelectContent>
               {[currentYear - 1, currentYear, currentYear + 1].map(y => (
                 <SelectItem key={y} value={String(y)}>{y}</SelectItem>
@@ -77,11 +103,23 @@ export default function ReportsPage() {
           </Select>
           <Button
             variant="outline"
-            className="gap-2"
-            onClick={() => downloadCSV(monthlyData, `relatorio-${year}.csv`)}
+            size="sm"
+            className="gap-1.5"
+            disabled={downloading === `${activeTab === 'categories' ? 'categories' : 'cash-flow'}-excel`}
+            onClick={() => handleDownload(activeTab === 'categories' ? 'categories' : 'cash-flow', 'excel')}
           >
-            <Download className="h-4 w-4" />
-            Exportar CSV
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+            Excel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            disabled={downloading === `${activeTab === 'categories' ? 'categories' : 'cash-flow'}-pdf`}
+            onClick={() => handleDownload(activeTab === 'categories' ? 'categories' : 'cash-flow', 'pdf')}
+          >
+            <FileText className="h-4 w-4 text-rose-600" />
+            PDF
           </Button>
         </div>
       </div>
@@ -131,7 +169,7 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="monthly">
+      <Tabs defaultValue="monthly" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="monthly">Evolução Mensal</TabsTrigger>
           <TabsTrigger value="categories">Por Categoria</TabsTrigger>

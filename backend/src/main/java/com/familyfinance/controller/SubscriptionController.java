@@ -1,10 +1,12 @@
 package com.familyfinance.controller;
 
+import com.familyfinance.dto.response.CheckoutSessionResponse;
 import com.familyfinance.dto.response.SubscriptionResponse;
 import com.familyfinance.dto.response.UsageResponse;
 import com.familyfinance.entity.PlanType;
 import com.familyfinance.entity.User;
 import com.familyfinance.service.FamilyGroupService;
+import com.familyfinance.service.StripeService;
 import com.familyfinance.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,7 @@ public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
     private final FamilyGroupService familyGroupService;
+    private final StripeService stripeService;
 
     @GetMapping
     public ResponseEntity<SubscriptionResponse> get(
@@ -51,5 +54,24 @@ public class SubscriptionController {
             @AuthenticationPrincipal User currentUser) {
         familyGroupService.assertMember(groupId, currentUser.getId());
         return ResponseEntity.ok(subscriptionService.getUsage(groupId));
+    }
+
+    @PostMapping("/checkout")
+    public ResponseEntity<CheckoutSessionResponse> checkout(
+            @PathVariable UUID groupId,
+            @RequestParam PlanType plan,
+            @AuthenticationPrincipal User currentUser) {
+        familyGroupService.assertAdmin(groupId, currentUser.getId());
+        String url = stripeService.createCheckoutSession(groupId, plan, currentUser);
+        return ResponseEntity.ok(new CheckoutSessionResponse(url));
+    }
+
+    @PostMapping("/portal")
+    public ResponseEntity<CheckoutSessionResponse> portal(
+            @PathVariable UUID groupId,
+            @AuthenticationPrincipal User currentUser) {
+        familyGroupService.assertAdmin(groupId, currentUser.getId());
+        String url = stripeService.createPortalSession(groupId);
+        return ResponseEntity.ok(new CheckoutSessionResponse(url));
     }
 }
