@@ -26,12 +26,11 @@ services:
       - key: ENCRYPTION_KEY
         generateValue: true
 
-      # URL do frontend Vercel — atualize após o deploy
       - key: FRONTEND_URL
-        value: https://familyfunds.vercel.app
+        value: https://family-funds-eight.vercel.app
 
       - key: CORS_ALLOWED_ORIGINS
-        value: https://familyfunds.vercel.app
+        value: https://family-funds-eight.vercel.app,http://localhost:5173,http://localhost:5174
 
       # SMTP para e-mails de recuperação de senha (opcional)
       - key: MAIL_HOST
