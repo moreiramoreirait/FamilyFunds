@@ -26,6 +26,8 @@ import FamilyPage from '@/pages/family/FamilyPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
 import ImportsPage from '@/pages/imports/ImportsPage'
 import PlansPage from '@/pages/plans/PlansPage'
+import UsagePage from '@/pages/usage/UsagePage'
+import AdminPage from '@/pages/admin/AdminPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
@@ -77,6 +79,8 @@ export default function App() {
           <Route path="/family" element={<FamilyPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/plans" element={<PlansPage />} />
+          <Route path="/usage" element={<UsagePage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
 
         {/* Default redirect */}

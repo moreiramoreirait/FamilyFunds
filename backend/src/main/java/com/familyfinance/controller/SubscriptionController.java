@@ -1,6 +1,7 @@
 package com.familyfinance.controller;
 
 import com.familyfinance.dto.response.SubscriptionResponse;
+import com.familyfinance.dto.response.UsageResponse;
 import com.familyfinance.entity.PlanType;
 import com.familyfinance.entity.User;
 import com.familyfinance.service.FamilyGroupService;
@@ -42,5 +43,13 @@ public class SubscriptionController {
             @AuthenticationPrincipal User currentUser) {
         familyGroupService.assertAdmin(groupId, currentUser.getId());
         return ResponseEntity.ok(subscriptionService.cancelSubscription(groupId));
+    }
+
+    @GetMapping("/usage")
+    public ResponseEntity<UsageResponse> getUsage(
+            @PathVariable UUID groupId,
+            @AuthenticationPrincipal User currentUser) {
+        familyGroupService.assertMember(groupId, currentUser.getId());
+        return ResponseEntity.ok(subscriptionService.getUsage(groupId));
     }
 }

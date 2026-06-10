@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ArrowUpDown, Wallet, Tag, CreditCard,
   BarChart2, Users, Settings, TrendingUp, LogOut, ChevronLeft,
-  ChevronRight, PiggyBank, FileUp
+  ChevronRight, PiggyBank, FileUp, BarChart3, Shield
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,7 @@ const navItems = [
   { to: '/reports', icon: BarChart2, label: 'Relatórios' },
   { to: '/family', icon: Users, label: 'Família' },
   { to: '/settings', icon: Settings, label: 'Configurações' },
+  { to: '/usage', icon: BarChart3, label: 'Uso do Plano' },
 ]
 
 const planBadgeConfig: Record<string, { label: string; className: string }> = {
@@ -94,6 +95,24 @@ export default function Sidebar() {
               </NavLink>
             </li>
           ))}
+          {user?.isSystemAdmin && (
+            <li>
+              <NavLink
+                to="/admin"
+                className={({ isActive }) => cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  sidebarCollapsed && 'justify-center'
+                )}
+                title={sidebarCollapsed ? 'Admin' : undefined}
+              >
+                <Shield className="h-5 w-5 flex-shrink-0" />
+                {!sidebarCollapsed && <span className="truncate">Admin</span>}
+              </NavLink>
+            </li>
+          )}
         </ul>
       </nav>
 

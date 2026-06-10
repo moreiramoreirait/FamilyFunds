@@ -28,6 +28,7 @@ public class FamilyGroupService {
     private final UserRepository userRepository;
     private final CategoryService categoryService;
     private final SubscriptionService subscriptionService;
+    private final EmailService emailService;
 
     @Transactional
     public FamilyGroupResponse create(FamilyGroupRequest request, User currentUser) {
@@ -120,6 +121,7 @@ public class FamilyGroupService {
                 .expiresAt(LocalDateTime.now().plusDays(7))
                 .build();
         inviteRepository.save(invite);
+        emailService.sendInviteEmail(invite, group.getName());
         log.info("Invite sent to {} for group {}", request.email(), groupId);
     }
 

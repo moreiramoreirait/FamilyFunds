@@ -2,6 +2,7 @@ package com.familyfinance.service;
 
 import com.familyfinance.dto.response.PlanResponse;
 import com.familyfinance.dto.response.SubscriptionResponse;
+import com.familyfinance.dto.response.UsageResponse;
 import com.familyfinance.entity.*;
 import com.familyfinance.exception.BusinessException;
 import com.familyfinance.repository.*;
@@ -25,6 +26,7 @@ public class SubscriptionService {
     private final FamilyGroupMemberRepository memberRepository;
     private final TransactionRepository transactionRepository;
     private final BankImportRepository bankImportRepository;
+    private final EmailService emailService;
 
     @Transactional
     public Subscription createTrialSubscription(FamilyGroup group) {
@@ -104,6 +106,9 @@ public class SubscriptionService {
         LocalDateTime start = current.atDay(1).atStartOfDay();
         LocalDateTime end = current.atEndOfMonth().atTime(23, 59, 59);
         long count = transactionRepository.countByFamilyGroupIdAndCreatedAtBetween(familyGroupId, start, end);
+        if (!plan.isUnlimited(plan.getMaxTransactionsPerMonth()) && count >= plan.getMaxTransactionsPerMonth() * 0.8) {
+            sendLimitWarningToAdmin(familyGroupId, "lançamentos neste mês", count, plan.getMaxTransactionsPerMonth());
+        }
         if (count >= plan.getMaxTransactionsPerMonth()) {
             throw new BusinessException(String.format(
                 "Limite de %d lançamento(s)/mês atingido para o plano %s. Faça upgrade para continuar.",
@@ -195,6 +200,50 @@ public class SubscriptionService {
                     "Lançamentos ilimitados", "Importações ilimitadas",
                     "Integração com IA", "Relatórios avançados", "API Access", "Suporte dedicado");
         };
+    }
+
+    public UsageResponse getUsage(UUID familyGroupId) {
+        Subscription sub = findOrDefault(familyGroupId);
+        PlanType eff = sub.getEffectivePlan();
+
+        long accounts = accountRepository.countByFamilyGroupIdAndIsActiveTrue(familyGroupId);
+        long cards = creditCardRepository.countByFamilyGroupIdAndIsActiveTrue(familyGroupId);
+        long members = memberRepository.countByFamilyGroupIdAndIsActiveTrue(familyGroupId);
+
+        YearMonth current = YearMonth.now();
+        LocalDateTime start = current.atDay(1).atStartOfDay();
+        LocalDateTime end = current.atEndOfMonth().atTime(23, 59, 59);
+        long transactions = transactionRepository.countByFamilyGroupIdAndCreatedAtBetween(familyGroupId, start, end);
+        long imports = bankImportRepository.countByFamilyGroupIdAndCreatedAtBetween(familyGroupId, start, end);
+
+        return new UsageResponse(
+            accounts, eff.getMaxAccounts(),
+            cards, eff.getMaxCreditCards(),
+            members, eff.getMaxUsers(),
+            transactions, eff.getMaxTransactionsPerMonth(),
+            imports, eff.getMaxImportsPerMonth(),
+            eff, sub.getStatus(),
+            sub.isTrialActive(), sub.getTrialDaysLeft()
+        );
+    }
+
+    private void sendLimitWarningToAdmin(UUID familyGroupId, String resource, long used, int max) {
+        try {
+            memberRepository.findByFamilyGroupIdAndIsActiveTrue(familyGroupId).stream()
+                .filter(m -> m.getRole() == MemberRole.ADMIN)
+                .findFirst()
+                .ifPresent(admin -> {
+                    FamilyGroup group = admin.getFamilyGroup();
+                    emailService.sendUsageLimitWarning(
+                        admin.getUser().getEmail(),
+                        admin.getUser().getName(),
+                        group.getName(),
+                        resource, used, max
+                    );
+                });
+        } catch (Exception e) {
+            // log but don't fail the main operation
+        }
     }
 
     private SubscriptionResponse toResponse(Subscription sub) {

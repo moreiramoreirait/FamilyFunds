@@ -7,6 +7,7 @@ export interface User {
   phone?: string
   emailVerified: boolean
   createdAt: string
+  isSystemAdmin?: boolean
 }
 
 export interface AuthResponse {

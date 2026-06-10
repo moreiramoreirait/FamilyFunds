@@ -138,6 +138,7 @@ public class AuthService {
                 user.getAvatarUrl(),
                 user.getPhone(),
                 user.getEmailVerified(),
+                user.getIsSystemAdmin(),
                 user.getCreatedAt()
         );
     }

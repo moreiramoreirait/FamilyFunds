@@ -10,5 +10,6 @@ public record UserResponse(
         String avatarUrl,
         String phone,
         Boolean emailVerified,
+        Boolean isSystemAdmin,
         LocalDateTime createdAt
 ) {}
