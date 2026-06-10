@@ -153,7 +153,7 @@ public class TransactionService {
                 .paidDate(request.paidDate())
                 .isRecurring(request.isRecurring() != null ? request.isRecurring() : false)
                 .recurrenceType(request.recurrenceType())
-                .recurrenceInterval(request.recurrenceInterval())
+                .recurrenceInterval(request.recurrenceInterval() != null ? request.recurrenceInterval() : 0)
                 .recurrenceEndDate(request.recurrenceEndDate())
                 .isInstallment(request.isInstallment() != null ? request.isInstallment() : false)
                 .notes(request.notes())
