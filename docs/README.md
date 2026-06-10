@@ -30,6 +30,8 @@ O sistema é **multi-tenant por grupo familiar** (`family_group_id`). Cada grupo
 - **Flyway** — migrações automáticas
 - **JWT** stateless + **BCrypt**
 - **Spring Mail** (SMTP) — convites e alertas
+- **Stripe Java SDK** — checkout, billing portal e webhooks
+- **Apache POI** (Excel) + **OpenPDF** (PDF) — relatórios avançados
 - **Swagger/OpenAPI** — docs interativa
 - **Lombok** + **Validation (Bean)**
 - Deploy: **Render** (Docker, free tier 512 MB)
@@ -90,6 +92,8 @@ npm run dev
 | `V3` | transactions, transaction_tags, cc_purchases, budgets, notifications, ai_settings, bank_imports |
 | `V4` | **subscriptions** (planos SaaS, status, trial) |
 | `V5` | `is_system_admin` na tabela users |
+| `V6` | rename de planos PRO→ESSENCIAL, BUSINESS→PREMIUM |
+| `V7` | colunas `stripe_*` em subscriptions + tabela **payment_events** |
 
 ### Principais tabelas
 
@@ -108,6 +112,7 @@ npm run dev
 | `bank_imports` | Importações CSV/OFX/XLSX |
 | `notifications` | Notificações internas |
 | `ai_settings` | Configurações de IA por grupo |
+| `payment_events` | Auditoria de eventos de webhook do Stripe |
 
 ---
 
@@ -142,7 +147,8 @@ UPDATE users SET is_system_admin = true WHERE email = 'admin@seudominio.com';
 
 ## Segurança
 
-- **JWT Bearer Token** — todas as rotas exceto `/api/v1/auth/**` e `/api/v1/plans`
+- **JWT Bearer Token** — todas as rotas exceto `/api/v1/auth/**`, `/api/v1/plans` e `/api/v1/webhooks/**`
+- **Webhook Stripe** — autenticado por assinatura HMAC (`Stripe-Signature`), não por JWT; eventos processados de forma idempotente
 - **BCrypt** — hash de senhas
 - **CORS** configurado via variável de ambiente `CORS_ALLOWED_ORIGINS`
 - **Bean Validation** no backend + **Zod** no frontend
@@ -182,8 +188,23 @@ POST   /api/v1/family-groups/invites/{token}/accept
 GET  /api/v1/plans                                           — lista planos (público)
 GET  /api/v1/family-groups/{id}/subscription                 — assinatura do grupo
 GET  /api/v1/family-groups/{id}/subscription/usage           — uso atual vs limites
-POST /api/v1/family-groups/{id}/subscription/upgrade?plan=   — upgrade (ADMIN)
+POST /api/v1/family-groups/{id}/subscription/upgrade?plan=   — upgrade manual (ADMIN)
 POST /api/v1/family-groups/{id}/subscription/cancel          — cancelar (ADMIN)
+POST /api/v1/family-groups/{id}/subscription/checkout?plan=  — Stripe Checkout (ADMIN)
+POST /api/v1/family-groups/{id}/subscription/portal          — portal de faturamento (ADMIN)
+```
+
+### Pagamentos — Stripe (Fase 3)
+```
+POST /api/v1/webhooks/stripe   — recebe eventos do Stripe (público, valida assinatura)
+```
+
+### Relatórios Avançados (Fase 5 — plano PREMIUM)
+```
+GET /api/v1/family-groups/{id}/reports/cash-flow/excel?year=    — fluxo de caixa (.xlsx)
+GET /api/v1/family-groups/{id}/reports/cash-flow/pdf?year=      — fluxo de caixa (.pdf)
+GET /api/v1/family-groups/{id}/reports/categories/excel?year=   — por categoria (.xlsx)
+GET /api/v1/family-groups/{id}/reports/categories/pdf?year=     — por categoria (.pdf)
 ```
 
 ### Admin do Sistema (requer is_system_admin)
@@ -265,15 +286,21 @@ GET    /api/v1/family-groups/{groupId}/credit-cards/{id}/invoices
 | `MAIL_PORT` | Não | 587 |
 | `MAIL_USERNAME` | Não | E-mail para envio |
 | `MAIL_PASSWORD` | Não | App password Gmail |
+| `STRIPE_SECRET_KEY` | Não* | Chave secreta da API Stripe (Fase 3) |
+| `STRIPE_WEBHOOK_SECRET` | Não* | Secret de assinatura do webhook |
+| `STRIPE_PRICE_ESSENCIAL` | Não* | Price ID do plano Essencial |
+| `STRIPE_PRICE_PREMIUM` | Não* | Price ID do plano Premium |
 
 > **Nota:** Não defina `PORT` — o Render injeta `PORT=10000` automaticamente.
+>
+> *As variáveis `STRIPE_*` são opcionais: sem elas o app sobe normalmente e as rotas de checkout retornam um erro amigável. São necessárias apenas para habilitar pagamentos reais.
 
 ### Frontend → Vercel
 1. Root Directory: `frontend`
 2. `VITE_API_URL=https://familyfunds-api.onrender.com/api/v1`
 
 ### Banco → Supabase
-As migrações V1–V5 rodam automaticamente via Flyway na primeira inicialização.
+As migrações V1–V7 rodam automaticamente via Flyway na inicialização. O `FlywayConfig` executa `repair()` antes de `migrate()`, limpando registros de migrations falhas antes de reaplicar.
 
 ---
 
@@ -299,13 +326,13 @@ As migrações V1–V5 rodam automaticamente via Flyway na primeira inicializaç
 - [x] **Dashboard de uso** com barras de progresso
 - [x] **Painel Admin** do sistema (grupos, stats, MRR)
 - [x] **E-mails de convite** e alertas de limite de uso
+- [x] **Pagamento via Stripe** — Checkout, portal de faturamento e webhooks (Fase 3)
+- [x] **Relatórios avançados em PDF / Excel** — fluxo de caixa e por categoria (Fase 5)
 - [x] Swagger UI documentado
 - [x] Dark/Light mode
 
 ### Roadmap
-- [ ] Pagamento via Stripe (Fase 3)
-- [ ] Integração com IA (OpenAI / Claude) — disponível no plano PRO+
-- [ ] Relatórios em PDF / Excel
-- [ ] Aplicativo Mobile (React Native)
-- [ ] Open Finance / PIX
-- [ ] Notificações WhatsApp
+- [ ] Integração com IA (OpenAI / Claude) — disponível no plano PREMIUM (Fase 4)
+- [ ] Aplicativo Mobile (React Native) — Fase 6
+- [ ] Open Finance / PIX — Fase 7
+- [ ] Notificações WhatsApp — Fase 8

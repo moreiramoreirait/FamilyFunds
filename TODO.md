@@ -50,8 +50,10 @@ com.familyfinance/
 │   ├── AiSettingController
 │   ├── DashboardController
 │   ├── PlanController          ← Fase 1
-│   ├── SubscriptionController  ← Fase 1
-│   └── AdminController         ← Fase 2
+│   ├── SubscriptionController  ← Fase 1 (+ checkout/portal Fase 3)
+│   ├── AdminController         ← Fase 2
+│   ├── ReportController        ← Fase 5 (Excel/PDF)
+│   └── StripeWebhookController ← Fase 3
 │
 ├── service/           Regras de negócio
 │   ├── AuthService
@@ -69,7 +71,9 @@ com.familyfinance/
 │   ├── EncryptionService
 │   ├── EmailService            ← Fase 2 (async)
 │   ├── SubscriptionService     ← Fase 1 (limites + trial)
-│   └── AdminService            ← Fase 2
+│   ├── AdminService            ← Fase 2
+│   ├── StripeService           ← Fase 3 (checkout, portal, webhooks)
+│   └── ReportService           ← Fase 5 (Apache POI + OpenPDF)
 │
 ├── entity/            JPA Entities
 │   ├── User (+ isSystemAdmin)
@@ -86,15 +90,16 @@ com.familyfinance/
 │   ├── Notification
 │   ├── AuditLog
 │   ├── AiSetting
-│   ├── Subscription            ← Fase 1
+│   ├── Subscription            ← Fase 1 (+ stripe_customer_id Fase 3)
 │   ├── PlanType (enum)         ← Fase 1
-│   └── SubscriptionStatus (enum) ← Fase 1
+│   ├── SubscriptionStatus (enum) ← Fase 1
+│   └── PaymentEvent            ← Fase 3 (auditoria de webhooks)
 │
 ├── repository/        Spring Data JPA
 ├── dto/               Request/Response records
 ├── security/          JWT filter + UserDetailsService
 ├── exception/         GlobalExceptionHandler
-└── config/            OpenApiConfig
+└── config/            OpenApiConfig, FlywayConfig (repair+migrate)
 ```
 
 ### Migrations Flyway
@@ -106,7 +111,8 @@ com.familyfinance/
 | V3 | transactions, budgets, notifications, ai_settings, bank_imports |
 | V4 | subscriptions (Fase 1) |
 | V5 | users.is_system_admin (Fase 2) |
-| V6 | rename plan_type PRO→ESSENCIAL, BUSINESS→PREMIUM |
+| V6 | rename plan PRO→ESSENCIAL, BUSINESS→PREMIUM (Fase 3) |
+| V7 | subscriptions.stripe_* + tabela payment_events (Fase 3) |
 
 ---
 
@@ -191,37 +197,39 @@ src/
 - Frontend: `UsagePage` (barras de progresso coloridas), `AdminPage` (stats grid + tabela de grupos com ações inline)
 - Flyway V5: coluna `users.is_system_admin`
 
+### ✅ Fase 3 — Pagamentos (Stripe)
+- `StripeService` (Stripe Java SDK 24.3.0): Checkout Session, Billing Portal e processamento de webhooks
+- Webhooks idempotentes (`stripe_event_id` único): `checkout.session.completed`, `customer.subscription.deleted`, `invoice.payment_failed`
+- `getOrCreateCustomer()` reaproveita o `stripe_customer_id` salvo na assinatura
+- `PaymentEvent` entity — auditoria de todos os eventos recebidos
+- Degradação graciosa: sem `STRIPE_SECRET_KEY`, lança `BusinessException` amigável (não quebra o app)
+- `POST /subscription/checkout?plan=` e `POST /subscription/portal` (ADMIN)
+- `POST /api/v1/webhooks/stripe` (público, valida assinatura)
+- Frontend: `PlansPage` redireciona ao Stripe Checkout e expõe link "Gerenciar faturamento" (portal)
+- Flyway V6 (rename) + V7 (`stripe_customer_id`, `stripe_subscription_id`, tabela `payment_events`)
+- **Pendente de configuração:** criar conta Stripe, produtos (Essencial/Premium) e definir as 4 env vars `STRIPE_*` no Render
+
+### ✅ Fase 5 — Relatórios Avançados
+- `ReportService`: geração de **Excel (.xlsx)** via Apache POI 5.2.5 e **PDF** via OpenPDF 1.3.43
+- Relatório de **fluxo de caixa mensal** (receitas vs despesas vs saldo, por mês)
+- Relatório **por categoria** (detalhamento de gastos no ano)
+- Acesso restrito ao plano PREMIUM via `checkAdvancedReportsAccess()`
+- 4 endpoints: `/reports/cash-flow/{excel,pdf}` e `/reports/categories/{excel,pdf}` (param `year` opcional, default ano atual)
+- Frontend: `ReportsPage` com botões Excel/PDF contextuais por aba ativa (download via blob)
+
 ---
 
 ## Roadmap — Próximas Fases
 
-### 🔲 Fase 3 — Pagamentos (Stripe)
-- Integrar Stripe Checkout para upgrade de plano
-- Webhooks: `checkout.session.completed`, `invoice.paid`, `customer.subscription.deleted`
-- `StripeService`: criar customer, checkout session, portal de billing
-- `PaymentEvent` entity para auditoria
-- Flyway V6: tabela `payment_events`
-- Frontend: botão "Pagar com Stripe" na PlansPage, portal de faturamento
-- Testes: Stripe CLI para simular webhooks localmente
-
 ### 🔲 Fase 4 — Integração com IA
 - `AiSetting` já existe no banco (provider, api_key criptografado, model)
-- Disponível apenas para planos PRO+ (`checkAiAccess()` já implementado)
+- Disponível apenas para o plano PREMIUM (`checkAiAccess()` já implementado)
 - Features a implementar:
   - Categorização automática de lançamentos importados
   - Análise de gastos: "você gastou 30% mais em restaurantes este mês"
   - Sugestão de orçamento baseado no histórico
   - Chat financeiro (perguntas em linguagem natural sobre os dados)
 - Providers planejados: OpenAI GPT-4o, Claude claude-sonnet-4-6, Gemini
-
-### 🔲 Fase 5 — Relatórios Avançados
-- Disponível para planos PRO+ (`advancedReports` flag já no PlanType)
-- Exportação em PDF (iText ou JasperReports)
-- Exportação em Excel (Apache POI — já usado nos imports)
-- Relatório de fluxo de caixa mensal
-- Relatório por categoria (12 meses)
-- Comparativo de períodos
-- Frontend: filtros avançados na ReportsPage, botões de download
 
 ### 🔲 Fase 6 — Aplicativo Mobile
 - React Native + Expo
@@ -236,7 +244,7 @@ src/
 - Sincronização automática de extratos
 - Conciliação automática com lançamentos existentes
 - Suporte a PIX (identificação de transações via chave)
-- Flyway V7: tabela `bank_connections`
+- Nova migration: tabela `bank_connections`
 
 ### 🔲 Fase 8 — Notificações Externas
 - WhatsApp via Twilio ou Z-API
