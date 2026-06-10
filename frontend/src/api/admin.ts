@@ -6,8 +6,8 @@ export interface AdminGroupResponse {
   ownerEmail: string
   ownerName: string
   memberCount: number
-  plan: 'FREE' | 'PRO' | 'BUSINESS'
-  effectivePlan: 'FREE' | 'PRO' | 'BUSINESS'
+  plan: 'FREE' | 'ESSENCIAL' | 'PREMIUM'
+  effectivePlan: 'FREE' | 'ESSENCIAL' | 'PREMIUM'
   subscriptionStatus: 'TRIAL' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED'
   trialEndDate: string | null
   createdAt: string

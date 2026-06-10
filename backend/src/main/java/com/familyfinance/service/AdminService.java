@@ -46,14 +46,14 @@ public class AdminService {
         List<Subscription> subs = subscriptionRepository.findAll();
         long trial = subs.stream().filter(s -> s.getStatus() == SubscriptionStatus.TRIAL).count();
         long activePro = subs.stream()
-                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE && s.getPlan() == PlanType.PRO).count();
+                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE && s.getPlan() == PlanType.ESSENCIAL).count();
         long activeBiz = subs.stream()
-                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE && s.getPlan() == PlanType.BUSINESS).count();
+                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE && s.getPlan() == PlanType.PREMIUM).count();
         long expired = subs.stream()
                 .filter(s -> s.getStatus() == SubscriptionStatus.EXPIRED || s.getStatus() == SubscriptionStatus.CANCELLED).count();
         long free = total - trial - activePro - activeBiz - expired;
         long totalUsers = userRepository.count();
-        double mrr = activePro * PlanType.PRO.getPriceMonthly() + activeBiz * PlanType.BUSINESS.getPriceMonthly();
+        double mrr = activePro * PlanType.ESSENCIAL.getPriceMonthly() + activeBiz * PlanType.PREMIUM.getPriceMonthly();
         return new AdminStatsResponse(total, trial, activePro, activeBiz, Math.max(free, 0), expired, totalUsers, mrr);
     }
 

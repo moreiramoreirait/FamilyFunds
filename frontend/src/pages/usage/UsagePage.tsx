@@ -69,7 +69,7 @@ export default function UsagePage() {
       <div>
         <h1 className="text-2xl font-bold">Uso do Plano</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Plano atual: <strong>{usage.effectivePlan === 'FREE' ? 'Gratuito' : usage.effectivePlan === 'PRO' ? 'Pro' : 'Business'}</strong>
+          Plano atual: <strong>{usage.effectivePlan === 'FREE' ? 'Free' : usage.effectivePlan === 'ESSENCIAL' ? 'Essencial' : 'Premium'}</strong>
           {usage.trialActive && ` · ${usage.trialDaysLeft} dias de teste restantes`}
         </p>
       </div>

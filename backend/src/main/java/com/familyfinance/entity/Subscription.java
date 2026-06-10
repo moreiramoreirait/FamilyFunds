@@ -42,7 +42,7 @@ public class Subscription {
     void prePersist() { this.createdAt = LocalDateTime.now(); }
 
     public PlanType getEffectivePlan() {
-        if (status == SubscriptionStatus.TRIAL) return PlanType.PRO;
+        if (status == SubscriptionStatus.TRIAL) return PlanType.PREMIUM;
         if (status == SubscriptionStatus.ACTIVE) return plan;
         return PlanType.FREE; // CANCELLED or EXPIRED
     }

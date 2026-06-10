@@ -106,6 +106,7 @@ com.familyfinance/
 | V3 | transactions, budgets, notifications, ai_settings, bank_imports |
 | V4 | subscriptions (Fase 1) |
 | V5 | users.is_system_admin (Fase 2) |
+| V6 | rename plan_type PRO→ESSENCIAL, BUSINESS→PREMIUM |
 
 ---
 
@@ -172,7 +173,7 @@ src/
 - Deploy: Render + Vercel + Supabase
 
 ### ✅ Fase 1 — SaaS Multi-Tenant: Planos + Limites
-- `PlanType` enum: FREE / PRO / BUSINESS com limites embutidos
+- `PlanType` enum: FREE / ESSENCIAL / PREMIUM com limites embutidos
 - `Subscription` entity + trial automático de 14 dias ao criar grupo
 - `SubscriptionService`: limit checks para contas, cartões, membros, lançamentos, importações e IA
 - Cron diário (03h) para expirar trials vencidos

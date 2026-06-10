@@ -4,17 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import { Users, TrendingUp, Crown, Building2 } from 'lucide-react'
+import { Users, TrendingUp, Crown, DollarSign } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useState } from 'react'
 
-const planLabels: Record<string, string> = { FREE: 'Gratuito', PRO: 'Pro', BUSINESS: 'Business' }
+const planLabels: Record<string, string> = { FREE: 'Free', ESSENCIAL: 'Essencial', PREMIUM: 'Premium' }
 const statusLabels: Record<string, string> = { TRIAL: 'Trial', ACTIVE: 'Ativo', CANCELLED: 'Cancelado', EXPIRED: 'Expirado' }
 const planBadge: Record<string, string> = {
   FREE: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-  PRO: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  BUSINESS: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  ESSENCIAL: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  PREMIUM: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
 }
 const statusBadge: Record<string, string> = {
   TRIAL: 'bg-amber-100 text-amber-700',
@@ -80,9 +80,9 @@ export default function AdminPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard title="Total de grupos" value={stats.totalGroups} icon={Users} />
           <StatCard title="Em trial" value={stats.trialGroups} icon={TrendingUp} />
-          <StatCard title="Assinaturas Pro" value={stats.activeProGroups} icon={Crown} />
+          <StatCard title="Assinaturas pagas" value={stats.activeProGroups + stats.activeBusinessGroups} icon={Crown} />
           <StatCard title="MRR estimado" value={`R$ ${stats.estimatedMRR.toFixed(2)}`}
-            sub={`${stats.totalUsers} usuários`} icon={Building2} />
+            sub={`${stats.totalUsers} usuários`} icon={DollarSign} />
         </div>
       )}
 
@@ -120,7 +120,7 @@ export default function AdminPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          {(['FREE', 'PRO', 'BUSINESS'] as const).filter(p => p !== g.effectivePlan).map(plan => (
+                          {(['FREE', 'ESSENCIAL', 'PREMIUM'] as const).filter(p => p !== g.effectivePlan).map(plan => (
                             <button
                               key={plan}
                               onClick={() => {

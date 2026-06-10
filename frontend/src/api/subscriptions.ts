@@ -11,7 +11,7 @@ export interface UsageResponse {
   maxTransactionsPerMonth: number
   importsUsed: number
   maxImportsPerMonth: number
-  effectivePlan: 'FREE' | 'PRO' | 'BUSINESS'
+  effectivePlan: 'FREE' | 'ESSENCIAL' | 'PREMIUM'
   status: 'TRIAL' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED'
   trialActive: boolean
   trialDaysLeft: number
@@ -20,8 +20,8 @@ export interface UsageResponse {
 export interface Subscription {
   id: string
   familyGroupId: string
-  plan: 'FREE' | 'PRO' | 'BUSINESS'
-  effectivePlan: 'FREE' | 'PRO' | 'BUSINESS'
+  plan: 'FREE' | 'ESSENCIAL' | 'PREMIUM'
+  effectivePlan: 'FREE' | 'ESSENCIAL' | 'PREMIUM'
   status: 'TRIAL' | 'ACTIVE' | 'CANCELLED' | 'EXPIRED'
   trialEndDate: string | null
   trialDaysLeft: number
@@ -39,7 +39,7 @@ export interface Subscription {
 }
 
 export interface Plan {
-  type: 'FREE' | 'PRO' | 'BUSINESS'
+  type: 'FREE' | 'ESSENCIAL' | 'PREMIUM'
   displayName: string
   priceMonthly: number
   maxUsers: number

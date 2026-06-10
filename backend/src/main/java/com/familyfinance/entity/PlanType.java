@@ -1,9 +1,9 @@
 package com.familyfinance.entity;
 
 public enum PlanType {
-    FREE(2, 3, 1, 50, 0, false, false, "Gratuito", 0.0),
-    PRO(10, 15, 5, 1000, 10, true, true, "Pro", 29.90),
-    BUSINESS(-1, -1, -1, -1, -1, true, true, "Business", 79.90);
+    FREE(2, 2, 1, 50, 1, false, false, "Free", 0.0),
+    ESSENCIAL(5, 10, 5, 500, 5, false, false, "Essencial", 14.90),
+    PREMIUM(-1, -1, -1, -1, -1, true, true, "Premium", 29.90);
 
     private final int maxUsers;
     private final int maxAccounts;

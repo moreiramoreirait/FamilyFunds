@@ -99,7 +99,7 @@ npm run dev
 | `family_groups` | Grupos familiares (tenant) |
 | `family_group_members` | Membros com papel ADMIN/EDITOR/VIEWER |
 | `family_group_invites` | Convites por e-mail com token |
-| `subscriptions` | Plano e status de cada grupo (FREE/PRO/BUSINESS + TRIAL) |
+| `subscriptions` | Plano e status de cada grupo (FREE/ESSENCIAL/PREMIUM + TRIAL) |
 | `accounts` | Contas bancárias |
 | `categories` / `subcategories` | Categorias de lançamentos |
 | `transactions` | Lançamentos financeiros |
@@ -115,18 +115,18 @@ npm run dev
 
 ### Planos
 
-| Feature | FREE | PRO | BUSINESS |
-|---------|------|-----|----------|
-| Usuários | 2 | 10 | Ilimitado |
-| Contas bancárias | 3 | 15 | Ilimitado |
+| Feature | FREE | ESSENCIAL | PREMIUM |
+|---------|------|-----------|---------|
+| Usuários | 2 | 5 | Ilimitado |
+| Contas bancárias | 2 | 10 | Ilimitado |
 | Cartões de crédito | 1 | 5 | Ilimitado |
-| Lançamentos/mês | 50 | 1.000 | Ilimitado |
-| Importações/mês | 0 | 10 | Ilimitado |
-| Integração IA | Não | Sim | Sim |
-| Relatórios avançados | Não | Sim | Sim |
-| Preço | Grátis | R$ 29,90/mês | R$ 79,90/mês |
+| Lançamentos/mês | 50 | 500 | Ilimitado |
+| Importações/mês | 1 | 5 | Ilimitado |
+| Integração IA | Não | Não | Sim |
+| Relatórios avançados | Não | Não | Sim |
+| Preço | Grátis | R$ 14,90/mês | R$ 29,90/mês |
 
-**Trial:** todo novo grupo ganha automaticamente 14 dias do plano PRO.
+**Trial:** todo novo grupo ganha automaticamente 14 dias do plano PREMIUM.
 
 ### Limites enforcement
 - `SubscriptionService` verifica limites antes de criar contas, cartões, membros e lançamentos
@@ -294,7 +294,7 @@ As migrações V1–V5 rodam automaticamente via Flyway na primeira inicializaç
 - [x] Importação CSV / OFX / XLSX
 - [x] Orçamentos mensais com alertas
 - [x] Notificações internas (vencimentos)
-- [x] **Planos SaaS (FREE / PRO / BUSINESS)** com trial de 14 dias
+- [x] **Planos SaaS (FREE / ESSENCIAL / PREMIUM)** com trial de 14 dias
 - [x] **Enforcement de limites** por plano
 - [x] **Dashboard de uso** com barras de progresso
 - [x] **Painel Admin** do sistema (grupos, stats, MRR)

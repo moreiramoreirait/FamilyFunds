@@ -119,18 +119,13 @@ public class SubscriptionService {
     public void checkImportLimit(UUID familyGroupId) {
         PlanType plan = getEffectivePlan(familyGroupId);
         if (plan.getMaxImportsPerMonth() == -1) return;
-        if (plan.getMaxImportsPerMonth() == 0) {
-            throw new BusinessException(
-                "Importação de extratos não está disponível no plano " + plan.getDisplayName() +
-                ". Faça upgrade para o plano Pro ou superior.");
-        }
         YearMonth current = YearMonth.now();
         LocalDateTime start = current.atDay(1).atStartOfDay();
         LocalDateTime end = current.atEndOfMonth().atTime(23, 59, 59);
         long count = bankImportRepository.countByFamilyGroupIdAndCreatedAtBetween(familyGroupId, start, end);
         if (count >= plan.getMaxImportsPerMonth()) {
             throw new BusinessException(String.format(
-                "Limite de %d importação(ões)/mês atingido para o plano %s.",
+                "Limite de %d importação(ões)/mês atingido para o plano %s. Faça upgrade para continuar.",
                 plan.getMaxImportsPerMonth(), plan.getDisplayName()));
         }
     }
@@ -140,7 +135,7 @@ public class SubscriptionService {
         if (!plan.isAiEnabled()) {
             throw new BusinessException(
                 "Integração com IA não está disponível no plano " + plan.getDisplayName() +
-                ". Faça upgrade para o plano Pro ou superior.");
+                ". Faça upgrade para o plano Premium.");
         }
     }
 
@@ -191,14 +186,16 @@ public class SubscriptionService {
 
     private List<String> getPlanFeatures(PlanType p) {
         return switch (p) {
-            case FREE -> List.of("2 usuários", "3 contas bancárias", "1 cartão de crédito",
-                    "50 lançamentos/mês", "Categorias e orçamentos", "Dashboard básico");
-            case PRO -> List.of("10 usuários", "15 contas bancárias", "5 cartões de crédito",
-                    "1.000 lançamentos/mês", "10 importações de extrato/mês",
-                    "Integração com IA", "Relatórios avançados", "Suporte prioritário");
-            case BUSINESS -> List.of("Usuários ilimitados", "Contas ilimitadas", "Cartões ilimitados",
+            case FREE -> List.of("2 usuários", "2 contas bancárias", "1 cartão de crédito",
+                    "50 lançamentos/mês", "1 importação de extrato/mês",
+                    "Categorias e orçamentos", "Dashboard básico");
+            case ESSENCIAL -> List.of("5 usuários", "10 contas bancárias", "5 cartões de crédito",
+                    "500 lançamentos/mês", "5 importações de extrato/mês",
+                    "Notificações por e-mail", "Tudo do plano Free");
+            case PREMIUM -> List.of("Usuários ilimitados", "Contas ilimitadas", "Cartões ilimitados",
                     "Lançamentos ilimitados", "Importações ilimitadas",
-                    "Integração com IA", "Relatórios avançados", "API Access", "Suporte dedicado");
+                    "Integração com IA", "Relatórios avançados",
+                    "Suporte prioritário", "Tudo do plano Essencial");
         };
     }
 

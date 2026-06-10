@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, Zap, Building2, Star, Loader2 } from 'lucide-react'
+import { Check, Zap, Crown, Star, Loader2 } from 'lucide-react'
 import { subscriptionsApi, type Plan, type Subscription } from '@/api/subscriptions'
 import { useAuthStore } from '@/store/authStore'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
-const PLAN_ORDER: Record<string, number> = { FREE: 0, PRO: 1, BUSINESS: 2 }
+const PLAN_ORDER: Record<string, number> = { FREE: 0, ESSENCIAL: 1, PREMIUM: 2 }
 
 const planConfig: Record<string, {
   icon: React.ElementType
@@ -26,7 +26,7 @@ const planConfig: Record<string, {
     buttonClass: '',
     priceLabel: 'Grátis para sempre',
   },
-  PRO: {
+  ESSENCIAL: {
     icon: Zap,
     iconClass: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
     badgeClass: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -34,8 +34,8 @@ const planConfig: Record<string, {
     buttonClass: 'bg-blue-600 hover:bg-blue-700 text-white',
     priceLabel: '/mês',
   },
-  BUSINESS: {
-    icon: Building2,
+  PREMIUM: {
+    icon: Crown,
     iconClass: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30',
     badgeClass: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
     ringClass: 'border-purple-500 ring-2 ring-purple-500/30',
@@ -73,7 +73,7 @@ function PlanCard({
   let buttonLabel = 'Fazer Upgrade'
   if (isCurrent) buttonLabel = 'Plano Atual'
   else if (isLower) buttonLabel = 'Fazer Downgrade'
-  else if (plan.type === 'BUSINESS') buttonLabel = 'Contatar Vendas'
+  else if (plan.type === 'PREMIUM') buttonLabel = 'Fazer Upgrade'
 
   const buttonDisabled = isCurrent || isLower || isUpgrading
 
