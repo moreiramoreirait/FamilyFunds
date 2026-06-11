@@ -64,6 +64,10 @@ export default function AdminPage() {
       toast({ title: 'Plano alterado com sucesso' })
       queryClient.invalidateQueries({ queryKey: ['admin-groups'] })
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      // Propaga a troca para as telas do cliente (badge da sidebar, página
+      // de Planos, uso) que leem a assinatura em cache.
+      queryClient.invalidateQueries({ queryKey: ['subscription'] })
+      queryClient.invalidateQueries({ queryKey: ['usage'] })
     },
     onError: () => toast({ title: 'Erro ao alterar plano', variant: 'destructive' }),
     onSettled: () => setChangingPlan(null),

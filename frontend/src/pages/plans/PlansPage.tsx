@@ -165,6 +165,10 @@ export default function PlansPage() {
     queryKey: ['subscription', currentGroupId],
     queryFn: () => subscriptionsApi.getSubscription(currentGroupId!),
     enabled: !!currentGroupId,
+    // Página onde o plano é visto/alterado: sempre buscar o estado real ao
+    // abrir (o staleTime global de 5min poderia mostrar o plano desatualizado
+    // após uma troca via admin, portal Stripe ou webhook).
+    refetchOnMount: 'always',
   })
 
   const { data: plans = [], isLoading: loadingPlans } = useQuery({
