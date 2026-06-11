@@ -1,17 +1,23 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Filter, TrendingUp, TrendingDown, ArrowUpDown, CheckCircle2, Pencil } from 'lucide-react'
-import { transactionsApi } from '@/api/transactions'
+import { Plus, Search, X, TrendingUp, TrendingDown, ArrowUpDown, CheckCircle2, Pencil } from 'lucide-react'
+import { transactionsApi, type TransactionFilters } from '@/api/transactions'
+import { accountsApi } from '@/api/accounts'
+import { categoriesApi } from '@/api/categories'
+import { tagsApi } from '@/api/tags'
 import { useAuthStore } from '@/store/authStore'
 import { familyGroupsApi } from '@/api/familyGroups'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, formatDate, getStatusLabel, cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { TransactionModal } from '@/components/transactions/TransactionModal'
+
+const ALL = '__all__'
 
 function StatusBadge({ status }: { status: string }) {
   const variantMap: Record<string, any> = {
@@ -27,14 +33,38 @@ export default function TransactionsPage() {
 
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState<TransactionFilters>({})
   const [modalOpen, setModalOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts', activeGroupId],
+    queryFn: () => accountsApi.list(activeGroupId!),
+    enabled: !!activeGroupId,
+  })
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', activeGroupId],
+    queryFn: () => categoriesApi.list(activeGroupId!),
+    enabled: !!activeGroupId,
+  })
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags', activeGroupId],
+    queryFn: () => tagsApi.list(activeGroupId!),
+    enabled: !!activeGroupId,
+  })
+
+  const updateFilter = (key: keyof TransactionFilters, value?: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+    setPage(0)
+  }
+  const clearFilters = () => { setFilters({}); setPage(0) }
+  const hasFilters = Object.values(filters).some(Boolean)
+
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', activeGroupId, page],
-    queryFn: () => transactionsApi.list(activeGroupId!, page, 20),
+    queryKey: ['transactions', activeGroupId, page, filters],
+    queryFn: () => transactionsApi.list(activeGroupId!, page, 20, filters),
     enabled: !!activeGroupId,
   })
 
@@ -81,21 +111,81 @@ export default function TransactionsPage() {
 
       {/* Filters */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar lançamentos..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filtros
-            </Button>
+        <CardContent className="p-4 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por descrição..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <Select value={filters.type ?? ALL} onValueChange={v => updateFilter('type', v === ALL ? undefined : v)}>
+              <SelectTrigger className="w-36 h-9"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os tipos</SelectItem>
+                <SelectItem value="INCOME">Receita</SelectItem>
+                <SelectItem value="EXPENSE">Despesa</SelectItem>
+                <SelectItem value="TRANSFER">Transferência</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.status ?? ALL} onValueChange={v => updateFilter('status', v === ALL ? undefined : v)}>
+              <SelectTrigger className="w-36 h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todos os status</SelectItem>
+                <SelectItem value="PENDING">Pendente</SelectItem>
+                <SelectItem value="PAID">Pago</SelectItem>
+                <SelectItem value="CANCELLED">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.accountId ?? ALL} onValueChange={v => updateFilter('accountId', v === ALL ? undefined : v)}>
+              <SelectTrigger className="w-40 h-9"><SelectValue placeholder="Conta" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as contas</SelectItem>
+                {accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.categoryId ?? ALL} onValueChange={v => updateFilter('categoryId', v === ALL ? undefined : v)}>
+              <SelectTrigger className="w-40 h-9"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as categorias</SelectItem>
+                {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.tagId ?? ALL} onValueChange={v => updateFilter('tagId', v === ALL ? undefined : v)}>
+              <SelectTrigger className="w-36 h-9"><SelectValue placeholder="Tag" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>Todas as tags</SelectItem>
+                {tags.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Input
+              type="date"
+              value={filters.startDate ?? ''}
+              onChange={e => updateFilter('startDate', e.target.value || undefined)}
+              className="w-40 h-9"
+              title="Data inicial"
+            />
+            <Input
+              type="date"
+              value={filters.endDate ?? ''}
+              onChange={e => updateFilter('endDate', e.target.value || undefined)}
+              className="w-40 h-9"
+              title="Data final"
+            />
+
+            {hasFilters && (
+              <Button variant="ghost" size="sm" className="h-9 gap-1.5 text-muted-foreground" onClick={clearFilters}>
+                <X className="h-4 w-4" /> Limpar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -198,6 +288,22 @@ function TransactionRow({ tx, onMarkPaid, onDelete, onEdit }: { tx: Transaction;
             </>
           )}
         </div>
+        {tx.tags?.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {tx.tags.map(tag => {
+              const color = tag.color || '#6b7280'
+              return (
+                <span
+                  key={tag.id}
+                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium leading-none"
+                  style={{ backgroundColor: color + '22', color }}
+                >
+                  {tag.name}
+                </span>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">

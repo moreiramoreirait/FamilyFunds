@@ -11,8 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.familyfinance.repository.spec.TransactionSpecifications.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,9 +36,25 @@ public class TransactionService {
     private final SubscriptionService subscriptionService;
 
     public Page<TransactionResponse> getAll(UUID familyGroupId, int page, int size) {
-        return transactionRepository.findByFamilyGroupIdOrderByTransactionDateDesc(
-                        familyGroupId, PageRequest.of(page, size))
-                .map(this::toResponse);
+        return getAll(familyGroupId, page, size, null, null, null, null, null, null, null);
+    }
+
+    public Page<TransactionResponse> getAll(UUID familyGroupId, int page, int size,
+                                            TransactionType type, TransactionStatus status,
+                                            UUID accountId, UUID categoryId, UUID tagId,
+                                            LocalDate startDate, LocalDate endDate) {
+        Specification<Transaction> spec = Specification.where(inFamilyGroup(familyGroupId))
+                .and(hasType(type))
+                .and(hasStatus(status))
+                .and(hasAccount(accountId))
+                .and(hasCategory(categoryId))
+                .and(hasTag(tagId))
+                .and(dateFrom(startDate))
+                .and(dateTo(endDate));
+
+        PageRequest pageRequest = PageRequest.of(page, size,
+                Sort.by(Sort.Direction.DESC, "transactionDate"));
+        return transactionRepository.findAll(spec, pageRequest).map(this::toResponse);
     }
 
     public TransactionResponse getById(UUID familyGroupId, UUID transactionId) {

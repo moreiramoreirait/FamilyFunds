@@ -25,9 +25,21 @@ export interface TransactionPayload {
   tagIds?: string[]
 }
 
+export interface TransactionFilters {
+  type?: string
+  status?: string
+  accountId?: string
+  categoryId?: string
+  tagId?: string
+  startDate?: string
+  endDate?: string
+}
+
 export const transactionsApi = {
-  list: (groupId: string, page = 0, size = 20) =>
-    apiClient.get<TransactionPage>(`/family-groups/${groupId}/transactions`, { params: { page, size } }).then(r => r.data),
+  list: (groupId: string, page = 0, size = 20, filters: TransactionFilters = {}) =>
+    apiClient.get<TransactionPage>(`/family-groups/${groupId}/transactions`, {
+      params: { page, size, ...filters },
+    }).then(r => r.data),
 
   getById: (groupId: string, id: string) =>
     apiClient.get<Transaction>(`/family-groups/${groupId}/transactions/${id}`).then(r => r.data),

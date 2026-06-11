@@ -3,6 +3,8 @@ package com.familyfinance.controller;
 import com.familyfinance.dto.request.TransactionRequest;
 import com.familyfinance.dto.response.TransactionResponse;
 import com.familyfinance.entity.MemberRole;
+import com.familyfinance.entity.TransactionStatus;
+import com.familyfinance.entity.TransactionType;
 import com.familyfinance.entity.User;
 import com.familyfinance.service.FamilyGroupService;
 import com.familyfinance.service.TransactionService;
@@ -33,14 +35,22 @@ public class TransactionController {
     private final FamilyGroupService familyGroupService;
 
     @GetMapping
-    @Operation(summary = "List transactions with pagination")
+    @Operation(summary = "List transactions with pagination and optional filters")
     public ResponseEntity<Page<TransactionResponse>> list(
             @PathVariable UUID groupId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) TransactionType type,
+            @RequestParam(required = false) TransactionStatus status,
+            @RequestParam(required = false) UUID accountId,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID tagId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @AuthenticationPrincipal User user) {
         familyGroupService.assertMember(groupId, user.getId());
-        return ResponseEntity.ok(transactionService.getAll(groupId, page, size));
+        return ResponseEntity.ok(transactionService.getAll(
+                groupId, page, size, type, status, accountId, categoryId, tagId, startDate, endDate));
     }
 
     @GetMapping("/{transactionId}")

@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, ArrowUpDown, Wallet, Tag, CreditCard,
+  LayoutDashboard, ArrowUpDown, Wallet, Tag, Tags, CreditCard,
   BarChart2, Users, Settings, TrendingUp, LogOut, ChevronLeft,
   ChevronRight, PiggyBank, FileUp, BarChart3, Shield
 } from 'lucide-react'
@@ -20,6 +20,7 @@ const navItems = [
   { to: '/cards', icon: CreditCard, label: 'Cartões' },
   { to: '/budget', icon: PiggyBank, label: 'Orçamentos' },
   { to: '/categories', icon: Tag, label: 'Categorias' },
+  { to: '/tags', icon: Tags, label: 'Tags' },
   { to: '/imports', icon: FileUp, label: 'Importação' },
   { to: '/reports', icon: BarChart2, label: 'Relatórios' },
   { to: '/family', icon: Users, label: 'Família' },

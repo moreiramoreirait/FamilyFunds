@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import {
   Car, Utensils, BookOpen, TrendingUp, Smile, Home, MoreHorizontal,
-  Heart, Shirt, Briefcase, Circle,
+  Heart, Shirt, Briefcase, Circle, Plus, Check,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast'
 import { transactionsApi } from '@/api/transactions'
 import { categoriesApi } from '@/api/categories'
 import { accountsApi } from '@/api/accounts'
+import { tagsApi } from '@/api/tags'
 import { familyGroupsApi } from '@/api/familyGroups'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
@@ -45,11 +46,14 @@ const schema = z.object({
   accountId: z.string().optional(),
   status: z.enum(['PENDING', 'PAID', 'CANCELLED']),
   notes: z.string().optional(),
+  tagIds: z.array(z.string()).default([]),
   isInstallment: z.boolean().default(false),
   installments: z.string().optional(),
   isRecurrent: z.boolean().default(false),
   recurrenceType: z.string().optional(),
 })
+
+const TAG_PALETTE = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#f97316', '#ec4899']
 
 type FormData = z.infer<typeof schema>
 
@@ -86,6 +90,12 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
     enabled: !!groupId,
   })
 
+  const { data: tags = [] } = useQuery({
+    queryKey: ['tags', groupId],
+    queryFn: () => tagsApi.list(groupId!),
+    enabled: !!groupId,
+  })
+
   const {
     register, handleSubmit, control, watch, reset, setValue, formState: { errors },
   } = useForm<FormData>({
@@ -112,6 +122,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         accountId: transaction.accountId || '',
         status: transaction.status as any,
         notes: transaction.notes || '',
+        tagIds: transaction.tags?.map(t => t.id) ?? [],
         isInstallment: false,
         isRecurrent: false,
       })
@@ -120,6 +131,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         type: defaultType,
         status: 'PENDING',
         transactionDate: format(new Date(), 'yyyy-MM-dd'),
+        tagIds: [],
         isInstallment: false,
         isRecurrent: false,
       })
@@ -155,6 +167,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         accountId: data.accountId || undefined,
         status: data.status,
         notes: data.notes || undefined,
+        tagIds: data.tagIds,
         installmentTotal: isInstallment ? parseInt(data.installments || '2') : undefined,
       }
       if (!groupId) {
@@ -180,6 +193,37 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     },
   })
+
+  const [newTag, setNewTag] = useState('')
+  const selectedTagIds = watch('tagIds') ?? []
+
+  const createTagMutation = useMutation({
+    mutationFn: (name: string) => {
+      const color = TAG_PALETTE[tags.length % TAG_PALETTE.length]
+      return tagsApi.create(groupId!, { name, color })
+    },
+    onSuccess: (tag) => {
+      queryClient.invalidateQueries({ queryKey: ['tags', groupId] })
+      setValue('tagIds', [...selectedTagIds, tag.id])
+      setNewTag('')
+    },
+    onError: (err: any) =>
+      toast({ title: err?.response?.data?.message || 'Erro ao criar tag', variant: 'destructive' }),
+  })
+
+  const toggleTag = (id: string) => {
+    setValue('tagIds', selectedTagIds.includes(id)
+      ? selectedTagIds.filter(t => t !== id)
+      : [...selectedTagIds, id])
+  }
+
+  const handleCreateTag = () => {
+    const name = newTag.trim()
+    if (!name || !groupId) return
+    const existing = tags.find(t => t.name.toLowerCase() === name.toLowerCase())
+    if (existing) { toggleTag(existing.id); setNewTag(''); return }
+    createTagMutation.mutate(name)
+  }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -284,6 +328,56 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
               )} />
             </div>
           )}
+
+          {/* Tags */}
+          <div className="space-y-1.5">
+            <Label>Tags</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map(tag => {
+                const active = selectedTagIds.includes(tag.id)
+                const color = tag.color || '#6b7280'
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => toggleTag(tag.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border transition-colors',
+                      active ? 'text-white' : 'bg-transparent',
+                    )}
+                    style={active
+                      ? { backgroundColor: color, borderColor: color }
+                      : { color, borderColor: color + '66' }}
+                  >
+                    {active && <Check className="h-3 w-3" />}
+                    {tag.name}
+                  </button>
+                )
+              })}
+              {tags.length === 0 && (
+                <span className="text-xs text-muted-foreground">Nenhuma tag ainda — crie uma abaixo.</span>
+              )}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Input
+                value={newTag}
+                onChange={e => setNewTag(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateTag() } }}
+                placeholder="Nova tag..."
+                className="h-8 text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1 flex-shrink-0"
+                disabled={!newTag.trim() || createTagMutation.isPending}
+                onClick={handleCreateTag}
+              >
+                <Plus className="h-3.5 w-3.5" /> Criar
+              </Button>
+            </div>
+          </div>
 
           {/* Status + Due date */}
           <div className="grid grid-cols-2 gap-3">

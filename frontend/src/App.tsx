@@ -19,6 +19,7 @@ import DashboardPage from '@/pages/dashboard/DashboardPage'
 import TransactionsPage from '@/pages/transactions/TransactionsPage'
 import AccountsPage from '@/pages/accounts/AccountsPage'
 import CategoriesPage from '@/pages/categories/CategoriesPage'
+import TagsPage from '@/pages/tags/TagsPage'
 import CardsPage from '@/pages/cards/CardsPage'
 import BudgetPage from '@/pages/budget/BudgetPage'
 import ReportsPage from '@/pages/reports/ReportsPage'
@@ -72,6 +73,7 @@ export default function App() {
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/accounts" element={<AccountsPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/tags" element={<TagsPage />} />
           <Route path="/cards" element={<CardsPage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/reports" element={<ReportsPage />} />
