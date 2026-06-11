@@ -156,8 +156,10 @@ public class BankImportService {
                         .description(item.getDescription())
                         .amount(item.getAmount())
                         .transactionDate(item.getTransactionDate())
+                        .paidDate(item.getTransactionDate())
                         .status(TransactionStatus.PAID)
                         .category(item.getCategory())
+                        .createdBy(bankImport.getImportedBy())
                         .build();
                 tx = transactionRepository.save(tx);
 
