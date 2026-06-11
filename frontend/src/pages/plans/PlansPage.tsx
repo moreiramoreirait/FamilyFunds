@@ -63,19 +63,26 @@ function PlanCard({
   const config = planConfig[plan.type] ?? planConfig.FREE
   const Icon = config.icon
 
-  const effectivePlan = subscription?.effectivePlan ?? 'FREE'
-  const isCurrent = effectivePlan === plan.type
-  const currentOrder = PLAN_ORDER[effectivePlan] ?? 0
+  // Só uma assinatura ACTIVE conta como plano "atual". Durante o TRIAL o
+  // effectivePlan é PREMIUM (acesso de cortesia), mas isso NÃO é pagamento —
+  // o usuário precisa poder assinar qualquer plano pago. CANCELLED/EXPIRED
+  // também voltam a poder assinar.
+  const status = subscription?.status
+  const activePlan = status === 'ACTIVE' ? (subscription?.plan ?? 'FREE') : 'FREE'
+  const isCurrent = status === 'ACTIVE' && activePlan === plan.type
+  const currentOrder = PLAN_ORDER[activePlan] ?? 0
   const thisOrder = PLAN_ORDER[plan.type] ?? 0
   const isHigher = thisOrder > currentOrder
   const isLower = thisOrder < currentOrder
+  const isPaid = plan.priceMonthly > 0
 
-  let buttonLabel = 'Fazer Upgrade'
+  let buttonLabel = 'Assinar'
   if (isCurrent) buttonLabel = 'Plano Atual'
+  else if (!isPaid) buttonLabel = 'Plano Grátis'
   else if (isLower) buttonLabel = 'Fazer Downgrade'
-  else if (plan.type === 'PREMIUM') buttonLabel = 'Fazer Upgrade'
+  else buttonLabel = status === 'TRIAL' ? 'Assinar agora' : 'Fazer Upgrade'
 
-  const buttonDisabled = isCurrent || isLower || isUpgrading
+  const buttonDisabled = isCurrent || isLower || !isPaid || isUpgrading
 
   return (
     <Card className={cn(
