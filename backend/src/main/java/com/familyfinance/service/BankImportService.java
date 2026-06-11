@@ -45,6 +45,7 @@ public class BankImportService {
     private final TransactionRepository   transactionRepository;
     private final UserRepository          userRepository;
     private final SubscriptionService     subscriptionService;
+    private final AccountService          accountService;
 
     // ─── list ────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,14 @@ public class BankImportService {
                         .createdBy(bankImport.getImportedBy())
                         .build();
                 tx = transactionRepository.save(tx);
+
+                // Imported transactions are PAID → adjust the account balance
+                // (income adds, expense subtracts), like a manual paid entry.
+                if (tx.getAccount() != null) {
+                    BigDecimal delta = item.getType() == TransactionType.INCOME
+                            ? item.getAmount() : item.getAmount().negate();
+                    accountService.updateBalance(tx.getAccount().getId(), delta);
+                }
 
                 item.setTransaction(tx);
                 item.setStatus(ImportItemStatus.IMPORTED);
