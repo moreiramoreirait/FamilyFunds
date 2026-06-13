@@ -113,6 +113,11 @@ com.familyfinance/
 | V5 | users.is_system_admin (Fase 2) |
 | V6 | rename plan PRO→ESSENCIAL, BUSINESS→PREMIUM (Fase 3) |
 | V7 | subscriptions.stripe_* + tabela payment_events (Fase 3) |
+| V8 | service_subscriptions + colunas origin_*/recurrence_reference_date em transactions |
+| V9 | recurring_expenses (despesas recorrentes, incl. BIWEEKLY) |
+| V10 | subscriptions.payment_pending (cobrança Stripe em re-tentativa) |
+| V11 | shopping_purchases, shopping_purchase_items, product_price_history |
+| V12 | shopping_lists, shopping_list_items |
 
 ---
 
@@ -217,6 +222,25 @@ src/
 - 4 endpoints: `/reports/cash-flow/{excel,pdf}` e `/reports/categories/{excel,pdf}` (param `year` opcional, default ano atual)
 - Frontend: `ReportsPage` com botões Excel/PDF contextuais por aba ativa (download via blob)
 
+### ✅ Fase 9 — Assinaturas de Serviços + Despesas Recorrentes
+- **Origem de lançamentos**: `OriginType` (MANUAL/SERVICE_SUBSCRIPTION/RECURRING_EXPENSE/SHOPPING_PURCHASE) + colunas `origin_type`/`origin_id`/`recurrence_reference_date` em `transactions`. `TransactionService.createGenerated`/`createForOrigin` evitam duplicatas por (origin, data de referência).
+- **Service Subscriptions** (`ServiceSubscription`): serviços recorrentes (Netflix, Spotify, ChatGPT…) com `recurrenceType` DAILY/WEEKLY/MONTHLY/YEARLY, dia de cobrança, status ACTIVE/PAUSED/CANCELLED, conta/cartão/categoria. Scheduler diário gera os lançamentos devidos; `summary` para os cards.
+- **Recurring Expenses** (`RecurringExpense`): despesas fixas (aluguel, energia, escola…), incl. recorrência **BIWEEKLY**; `autoGenerate` + scheduler; `summary`.
+- Dashboard ganhou indicadores: total mensal de assinaturas, de recorrentes e % das fixas sobre a receita.
+- Frontend: `SubscriptionsPage` + `SubscriptionModal`, `RecurringExpensesPage`, itens na sidebar.
+- Flyway V8 (service_subscriptions + origin) e V9 (recurring_expenses).
+
+### ✅ Fase 10 — Stripe: pagamento pendente
+- Coluna `payment_pending` em `subscriptions` (Flyway V10). Handler do webhook `customer.subscription.updated` marca/desmarca conforme status `past_due`/`unpaid`. O acesso ao plano é mantido durante as re-tentativas.
+- Frontend: badge/aviso de "Pagamento pendente" na sidebar e banner.
+
+### ✅ Fase 11 — Compras Inteligentes
+- 3 conceitos separados: **Lista** (checklist, não gera despesa) · **Compra** (registro real com itens) · **Despesa** (1 lançamento único em `transactions` com o valor total).
+- **Backend** (Etapas A–C): `ShoppingPurchase`/`ShoppingPurchaseItem`/`ProductPriceHistory`/`ShoppingList`/`ShoppingListItem`; enums (ShoppingSourceType, PurchaseStatus, ExtractionStatus, ShoppingListStatus); `ShoppingPurchaseService` (CRUD, finalize, generate-transaction com dedup, histórico de preços, summary), `ShoppingListService` (CRUD + itens + convert-to-purchase), `NfceImportService` (Jsoup, extração best-effort, status SUCESSO/PARCIAL/FALHA, **fallback manual**, nunca contorna CAPTCHA/SEFAZ). `ProductNameNormalizer` para chavear o histórico. Flyway V11 + V12.
+- **Frontend** (Etapa D): hub `ShoppingPage` (cards + abas Compras/Listas/Histórico/Insights), modais (compra manual, detalhes, gerar despesa PAGA/PENDENTE, lista/checklist+converter, colar link NFC-e, escanear QR via `html5-qrcode`), rota `/shopping`, item na sidebar e card "Supermercado/mês" no dashboard.
+- **Insights**: histórico básico aberto a todos; análises avançadas/IA reservadas ao PREMIUM (`aiEnabled`).
+- **Regra-chave**: a compra gera no máximo **um** lançamento (valor total); preços por item ficam só no módulo. Listas nunca geram despesa.
+
 ---
 
 ## Roadmap — Próximas Fases
@@ -277,7 +301,9 @@ src/
 - [ ] i18n — base PT-BR ok, preparar para EN/ES
 
 ### Infra / DevOps
-- [ ] GitHub Actions: CI (build + testes) em PRs
+- [x] GitHub Actions: CI (build + testes) em PRs — `ci.yml`
+- [x] Deploy automático: Render + Vercel via integração nativa do GitHub no push para `main` (sem workflow de deploy próprio)
+- [ ] Keep-warm do Render free via monitor de uptime externo (UptimeRobot/cron-job.org) — o `schedule` do GitHub Actions é atrasado demais e foi removido
 - [ ] Ambiente de staging separado (Render + Vercel preview)
 - [ ] Variáveis de ambiente via Render Secret Files para configs sensíveis
 - [ ] Logs estruturados (JSON) + integração com Datadog ou Grafana Cloud

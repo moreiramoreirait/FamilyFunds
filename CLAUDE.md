@@ -58,6 +58,8 @@ Campos primitivos (`int`, `boolean`) nunca recebem `null` — usar null check an
 - **DB:** Supabase PostgreSQL — Flyway roda na inicialização do backend
 - **Render port:** sempre `PORT=10000` (não sobrescrever via env var)
 - **Health check:** `/actuator/health` — mapeado para HTTP 200 mesmo com status DOWN
+- **CI/CD:** deploy é nativo do Render/Vercel (integração GitHub) — **não há workflow de deploy**. O GitHub Actions roda só `ci.yml` (build + testes). Não recriar `deploy.yml`/`keep-alive.yml` (removidos: secrets nunca configurados e `schedule` atrasado demais).
+- **Keep-warm:** Render free hiberna após ~15 min — usar monitor de uptime externo (UptimeRobot/cron-job.org) em `/actuator/health` a cada 5 min, não GitHub Actions.
 
 ## Workflow de Desenvolvimento
 

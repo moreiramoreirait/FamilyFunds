@@ -94,6 +94,11 @@ npm run dev
 | `V5` | `is_system_admin` na tabela users |
 | `V6` | rename de planos PRO→ESSENCIAL, BUSINESS→PREMIUM |
 | `V7` | colunas `stripe_*` em subscriptions + tabela **payment_events** |
+| `V8` | **service_subscriptions** + colunas `origin_type`/`origin_id`/`recurrence_reference_date` em transactions |
+| `V9` | **recurring_expenses** (despesas recorrentes, incl. recorrência BIWEEKLY) |
+| `V10` | coluna `payment_pending` em subscriptions (cobrança Stripe em re-tentativa) |
+| `V11` | **shopping_purchases**, **shopping_purchase_items**, **product_price_history** (Compras Inteligentes) |
+| `V12` | **shopping_lists** + **shopping_list_items** (listas/checklist) |
 
 ### Principais tabelas
 
@@ -113,6 +118,11 @@ npm run dev
 | `notifications` | Notificações internas |
 | `ai_settings` | Configurações de IA por grupo |
 | `payment_events` | Auditoria de eventos de webhook do Stripe |
+| `service_subscriptions` | Assinaturas de serviços recorrentes (Netflix, Spotify…) que geram lançamentos |
+| `recurring_expenses` | Despesas fixas recorrentes (aluguel, energia, escola…) |
+| `shopping_purchases` / `shopping_purchase_items` | Compras de supermercado e seus itens (Compras Inteligentes) |
+| `product_price_history` | Histórico de preços por produto (alimentado pelos itens de compra) |
+| `shopping_lists` / `shopping_list_items` | Listas de compras (checklist) — não geram despesa |
 
 ---
 
@@ -254,6 +264,49 @@ PUT    /api/v1/family-groups/{groupId}/credit-cards/{id}
 GET    /api/v1/family-groups/{groupId}/credit-cards/{id}/invoices
 ```
 
+### Assinaturas de Serviços (recorrentes que geram lançamento)
+```
+GET    /api/v1/family-groups/{groupId}/service-subscriptions
+POST   /api/v1/family-groups/{groupId}/service-subscriptions
+GET    /api/v1/family-groups/{groupId}/service-subscriptions/summary
+PUT    /api/v1/family-groups/{groupId}/service-subscriptions/{id}
+PATCH  /api/v1/family-groups/{groupId}/service-subscriptions/{id}/{pause|cancel|activate}
+POST   /api/v1/family-groups/{groupId}/service-subscriptions/generate   — gera lançamentos devidos
+```
+
+### Despesas Recorrentes (despesas fixas)
+```
+GET    /api/v1/family-groups/{groupId}/recurring-expenses
+POST   /api/v1/family-groups/{groupId}/recurring-expenses
+GET    /api/v1/family-groups/{groupId}/recurring-expenses/summary
+PUT    /api/v1/family-groups/{groupId}/recurring-expenses/{id}
+POST   /api/v1/family-groups/{groupId}/recurring-expenses/generate
+```
+
+### Compras Inteligentes (supermercado, NFC-e, histórico de preços)
+```
+GET    /api/v1/family-groups/{groupId}/shopping/purchases
+POST   /api/v1/family-groups/{groupId}/shopping/purchases/manual
+GET    /api/v1/family-groups/{groupId}/shopping/purchases/{id}
+PUT    /api/v1/family-groups/{groupId}/shopping/purchases/{id}
+DELETE /api/v1/family-groups/{groupId}/shopping/purchases/{id}
+POST   /api/v1/family-groups/{groupId}/shopping/purchases/{id}/finalize
+POST   /api/v1/family-groups/{groupId}/shopping/purchases/{id}/generate-transaction  — gera 1 despesa (valor total)
+POST   /api/v1/family-groups/{groupId}/shopping/receipts/import-from-url    — NFC-e por link (Jsoup)
+POST   /api/v1/family-groups/{groupId}/shopping/receipts/import-from-qrcode — NFC-e por QR Code
+GET    /api/v1/family-groups/{groupId}/shopping/summary
+GET    /api/v1/family-groups/{groupId}/shopping/price-history[/{normalizedName}]
+GET    /api/v1/family-groups/{groupId}/shopping/lists
+POST   /api/v1/family-groups/{groupId}/shopping/lists
+PUT    /api/v1/family-groups/{groupId}/shopping/lists/{id}
+DELETE /api/v1/family-groups/{groupId}/shopping/lists/{id}
+POST   /api/v1/family-groups/{groupId}/shopping/lists/{id}/items
+PUT    /api/v1/family-groups/{groupId}/shopping/lists/{id}/items/{itemId}
+DELETE /api/v1/family-groups/{groupId}/shopping/lists/{id}/items/{itemId}
+POST   /api/v1/family-groups/{groupId}/shopping/lists/{id}/convert-to-purchase  — cria compra RASCUNHO (sem despesa)
+```
+> **Regra-chave (Compras Inteligentes):** uma compra gera **no máximo um** lançamento em `transactions`, com o **valor total**. Os preços por item ficam apenas no módulo (`shopping_purchase_items` + `product_price_history`). Listas são checklists e **não** geram despesa.
+
 ### Outros módulos
 ```
 /{groupId}/cost-centers/**     — Centros de custo
@@ -300,7 +353,12 @@ GET    /api/v1/family-groups/{groupId}/credit-cards/{id}/invoices
 2. `VITE_API_URL=https://familyfunds-api.onrender.com/api/v1`
 
 ### Banco → Supabase
-As migrações V1–V7 rodam automaticamente via Flyway na inicialização. O `FlywayConfig` executa `repair()` antes de `migrate()`, limpando registros de migrations falhas antes de reaplicar.
+As migrações V1–V12 rodam automaticamente via Flyway na inicialização. O `FlywayConfig` executa `repair()` antes de `migrate()`, limpando registros de migrations falhas antes de reaplicar.
+
+### Deploy automático (CI/CD)
+- **Push para `main` → deploy automático**: Render (backend) e Vercel (frontend) usam a integração nativa com o GitHub. Não há workflow de deploy próprio.
+- **GitHub Actions** roda apenas o `ci.yml` (build + testes de backend e frontend) em pushes e PRs — não dispara deploy.
+- **Manter o Render acordado:** o plano free hiberna após ~15 min ocioso. O agendamento `schedule` do GitHub Actions é atrasado demais para isso, então use um **monitor de uptime externo** (UptimeRobot / cron-job.org, free) pingando `https://familyfunds-api.onrender.com/actuator/health` a cada 5 min. O `/actuator/health` retorna HTTP 200 mesmo com status DOWN, então o ping sempre acorda o serviço.
 
 ---
 
@@ -328,6 +386,10 @@ As migrações V1–V7 rodam automaticamente via Flyway na inicialização. O `F
 - [x] **E-mails de convite** e alertas de limite de uso
 - [x] **Pagamento via Stripe** — Checkout, portal de faturamento e webhooks (Fase 3)
 - [x] **Relatórios avançados em PDF / Excel** — fluxo de caixa e por categoria (Fase 5)
+- [x] **Assinaturas de serviços** — recorrentes (Netflix, Spotify…) com geração de lançamentos e resumo
+- [x] **Despesas recorrentes** — fixas (aluguel, energia, escola…), incl. recorrência quinzenal (BIWEEKLY)
+- [x] **Compras Inteligentes** — compras de supermercado (manual / NFC-e por link ou QR Code via Jsoup), itens, **histórico de preços**, listas de compras (checklist) e geração de **despesa única** com o valor total
+- [x] **Insights de compras** — básico para todos; análises avançadas/IA reservadas ao plano PREMIUM
 - [x] Swagger UI documentado
 - [x] Dark/Light mode
 

@@ -84,6 +84,13 @@ Flyway executa todas as migrações automaticamente ao iniciar o backend:
 | V3 | transactions, transaction_tags, cc_purchases, budgets, notifications, ai_settings, bank_imports |
 | V4 | subscriptions (planos SaaS, trial, status) |
 | V5 | coluna `is_system_admin` na tabela users |
+| V6 | rename de planos PRO→ESSENCIAL, BUSINESS→PREMIUM |
+| V7 | colunas `stripe_*` + tabela payment_events |
+| V8 | service_subscriptions + colunas `origin_*` em transactions |
+| V9 | recurring_expenses (despesas recorrentes) |
+| V10 | coluna `payment_pending` em subscriptions |
+| V11 | shopping_purchases, shopping_purchase_items, product_price_history |
+| V12 | shopping_lists, shopping_list_items |
 
 ### Configurar Admin do Sistema
 
@@ -138,6 +145,11 @@ VITE_API_URL=https://familyfunds-api.onrender.com/api/v1
 | Notifications | `/{groupId}/notifications/**` |
 | AI Settings | `/{groupId}/ai-settings/**` |
 | Bank Imports | `/{groupId}/bank-imports/**` |
+| Service Subscriptions | `/{groupId}/service-subscriptions/**` |
+| Recurring Expenses | `/{groupId}/recurring-expenses/**` |
+| Compras Inteligentes | `/{groupId}/shopping/**` (purchases, lists, price-history, receipts) |
 | Dashboard | `/{groupId}/dashboard` |
 
 Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+> **Deploy:** push para `main` dispara deploy automático no Render (backend) e Vercel (frontend) via integração nativa do GitHub — não há workflow de deploy. O GitHub Actions roda só o `ci.yml` (build + testes). Para manter o Render free acordado, use um monitor de uptime externo (UptimeRobot/cron-job.org) em `/actuator/health` a cada 5 min.
