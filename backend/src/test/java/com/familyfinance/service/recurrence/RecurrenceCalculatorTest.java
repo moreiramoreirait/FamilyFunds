@@ -72,6 +72,18 @@ class RecurrenceCalculatorTest {
     }
 
     @Test
+    void biweekly_generatesEveryFourteenDays() {
+        List<LocalDate> occ = RecurrenceCalculator.occurrences(
+                LocalDate.of(2026, 6, 1), null, RecurrenceType.BIWEEKLY, null,
+                LocalDate.of(2026, 6, 1), LocalDate.of(2026, 6, 30), TODAY);
+
+        assertThat(occ).containsExactly(
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 15),
+                LocalDate.of(2026, 6, 29));
+    }
+
+    @Test
     void yearly_generatesAtMostOncePerYearInWindow() {
         List<LocalDate> occ = RecurrenceCalculator.occurrences(
                 LocalDate.of(2024, 7, 5), 5, RecurrenceType.YEARLY, null,

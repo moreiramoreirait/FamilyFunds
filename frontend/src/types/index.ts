@@ -164,6 +164,10 @@ export interface DashboardData {
   monthlyEvolution: MonthlyEvolutionItem[]
   recentTransactions: Transaction[]
   upcomingDue: Transaction[]
+  totalMonthlySubscriptions: number
+  totalMonthlyRecurringExpenses: number
+  upcomingRecurringChargesCount: number
+  recurringPercentOfIncome: number
 }
 
 // ============ CREDIT CARD ============
@@ -229,6 +233,39 @@ export interface ServiceSubscriptionSummary {
   nextChargeDate?: string
   nextChargeName?: string
   nextChargeAmount?: number
+}
+
+// ============ RECURRING EXPENSE ============
+export type RecurringExpenseStatus = 'ACTIVE' | 'PAUSED' | 'CANCELLED'
+
+export interface RecurringExpense {
+  id: string
+  description: string
+  amount: number
+  dueDay?: number
+  startDate?: string
+  endDate?: string
+  status: RecurringExpenseStatus
+  categoryId?: string
+  categoryName?: string
+  costCenterId?: string
+  costCenterName?: string
+  paymentAccountId?: string
+  paymentAccountName?: string
+  paymentMethod?: string
+  recurrenceType: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'YEARLY'
+  autoGenerate: boolean
+  nextDueDate?: string
+  createdAt: string
+}
+
+export interface RecurringExpenseSummary {
+  activeCount: number
+  pausedCount: number
+  monthlyTotal: number
+  nextDueDate?: string
+  nextDueDescription?: string
+  nextDueAmount?: number
 }
 
 // ============ COST CENTER ============

@@ -55,6 +55,7 @@ public final class RecurrenceCalculator {
         return switch (type) {
             case DAILY -> d.plusDays(1);
             case WEEKLY -> d.plusWeeks(1);
+            case BIWEEKLY -> d.plusWeeks(2);
             case MONTHLY -> d.plusMonths(1);
             case YEARLY -> d.plusYears(1);
         };

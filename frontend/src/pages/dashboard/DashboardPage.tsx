@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp, TrendingDown, Wallet, CreditCard, AlertTriangle,
-  Clock, PiggyBank, ArrowUpDown, RefreshCw
+  Clock, PiggyBank, ArrowUpDown, RefreshCw, Tv, Repeat, Percent
 } from 'lucide-react'
 import { dashboardApi } from '@/api/dashboard'
 import { useAuthStore } from '@/store/authStore'
@@ -128,6 +128,9 @@ export default function DashboardPage() {
     { title: 'Contas Vencidas', value: String(data.overdueCount), icon: AlertTriangle, colorClass: 'text-rose-600 dark:text-rose-400', subtitle: 'Necessitam atenção' },
     { title: 'A Vencer (7d)', value: String(data.dueSoonCount), icon: Clock, colorClass: 'text-amber-600 dark:text-amber-400', subtitle: 'Próximos 7 dias' },
     { title: 'Economia do Mês', value: formatCurrency(data.savingsAmount), icon: PiggyBank, colorClass: 'text-emerald-600 dark:text-emerald-400', subtitle: 'Valor economizado' },
+    { title: 'Assinaturas/mês', value: formatCurrency(data.totalMonthlySubscriptions), icon: Tv, colorClass: 'text-blue-600 dark:text-blue-400', subtitle: 'Serviços ativos' },
+    { title: 'Recorrentes/mês', value: formatCurrency(data.totalMonthlyRecurringExpenses), icon: Repeat, colorClass: 'text-rose-600 dark:text-rose-400', subtitle: 'Despesas fixas' },
+    { title: 'Fixas s/ Receita', value: formatPercent(data.recurringPercentOfIncome ?? 0), icon: Percent, colorClass: 'text-purple-600 dark:text-purple-400', subtitle: 'Assinaturas + recorrentes' },
   ]
 
   const monthlyData = data.monthlyEvolution.map(item => ({

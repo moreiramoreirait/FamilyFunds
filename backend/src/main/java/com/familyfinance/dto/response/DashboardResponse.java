@@ -16,7 +16,11 @@ public record DashboardResponse(
         List<CategoryExpenseItem> expensesByCategory,
         List<MonthlyEvolutionItem> monthlyEvolution,
         List<TransactionResponse> recentTransactions,
-        List<TransactionResponse> upcomingDue
+        List<TransactionResponse> upcomingDue,
+        BigDecimal totalMonthlySubscriptions,
+        BigDecimal totalMonthlyRecurringExpenses,
+        long upcomingRecurringChargesCount,
+        Double recurringPercentOfIncome
 ) {
     public record CategoryExpenseItem(String categoryId, String categoryName, String color, BigDecimal amount, Double percentage) {}
     public record MonthlyEvolutionItem(String month, BigDecimal income, BigDecimal expense, BigDecimal balance) {}

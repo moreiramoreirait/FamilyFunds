@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class RecurrenceSchedulerService {
 
     private final ServiceSubscriptionService serviceSubscriptionService;
+    private final RecurringExpenseService recurringExpenseService;
 
     @Scheduled(cron = "0 0 2 * * *") // todo dia às 02:00
     public void generateRecurringTransactions() {
@@ -23,6 +24,11 @@ public class RecurrenceSchedulerService {
             serviceSubscriptionService.generateAllActive();
         } catch (Exception e) {
             log.error("Falha na geração agendada de assinaturas", e);
+        }
+        try {
+            recurringExpenseService.generateAllActive();
+        } catch (Exception e) {
+            log.error("Falha na geração agendada de despesas recorrentes", e);
         }
     }
 }

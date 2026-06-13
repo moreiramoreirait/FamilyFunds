@@ -26,6 +26,8 @@ public class DashboardService {
     private final AccountRepository accountRepository;
     private final CreditCardInvoiceRepository invoiceRepository;
     private final TransactionService transactionService;
+    private final ServiceSubscriptionService serviceSubscriptionService;
+    private final RecurringExpenseService recurringExpenseService;
 
     public DashboardResponse getDashboard(UUID familyGroupId) {
         LocalDate now = LocalDate.now();
@@ -80,10 +82,20 @@ public class DashboardService {
         double budgetPct = 0.0;
         BigDecimal savings = monthlyResult.compareTo(BigDecimal.ZERO) > 0 ? monthlyResult : BigDecimal.ZERO;
 
+        // Recorrências (assinaturas + despesas recorrentes)
+        BigDecimal monthlySubs = serviceSubscriptionService.monthlyActiveTotal(familyGroupId);
+        BigDecimal monthlyRecurring = recurringExpenseService.monthlyActiveTotal(familyGroupId);
+        long upcomingRecurring = serviceSubscriptionService.upcomingChargesCount(familyGroupId);
+        BigDecimal recurringTotal = monthlySubs.add(monthlyRecurring);
+        double recurringPct = monthlyIncome.compareTo(BigDecimal.ZERO) > 0
+                ? recurringTotal.divide(monthlyIncome, 4, RoundingMode.HALF_UP).doubleValue() * 100
+                : 0.0;
+
         return new DashboardResponse(
                 totalBalance, monthlyIncome, monthlyExpense, monthlyResult,
                 totalCards, overdueCount, dueSoonCount, savings, budgetPct,
-                expensesByCategory, evolution, recent, upcoming
+                expensesByCategory, evolution, recent, upcoming,
+                monthlySubs, monthlyRecurring, upcomingRecurring, recurringPct
         );
     }
 }

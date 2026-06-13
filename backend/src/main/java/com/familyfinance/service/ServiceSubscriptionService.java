@@ -135,6 +135,26 @@ public class ServiceSubscriptionService {
                 next != null ? next.getAmount() : null);
     }
 
+    /** Total mensal estimado das assinaturas ATIVAS (para o dashboard). */
+    @Transactional(readOnly = true)
+    public BigDecimal monthlyActiveTotal(UUID groupId) {
+        return repository.findByFamilyGroupIdAndStatus(groupId, ServiceSubscriptionStatus.ACTIVE).stream()
+                .map(this::monthlyEquivalent).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /** Quantidade de assinaturas ativas com próxima cobrança nos próximos 7 dias. */
+    @Transactional(readOnly = true)
+    public long upcomingChargesCount(UUID groupId) {
+        LocalDate today = LocalDate.now();
+        LocalDate limit = today.plusDays(7);
+        return repository.findByFamilyGroupIdAndStatus(groupId, ServiceSubscriptionStatus.ACTIVE).stream()
+                .filter(s -> s.getNextChargeDate() != null
+                        && !s.getNextChargeDate().isBefore(today)
+                        && !s.getNextChargeDate().isAfter(limit))
+                .count();
+    }
+
     // ─── Geração de lançamentos ───────────────────────────────────────────────────
 
     /** Gera lançamentos PENDING dos próximos 3 meses para as assinaturas ATIVAS do grupo. Retorna quantos criou. */
@@ -200,6 +220,7 @@ public class ServiceSubscriptionService {
             case MONTHLY -> a;
             case YEARLY -> a.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
             case WEEKLY -> a.multiply(BigDecimal.valueOf(52)).divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
+            case BIWEEKLY -> a.multiply(BigDecimal.valueOf(26)).divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
             case DAILY -> a.multiply(BigDecimal.valueOf(30));
         };
     }
