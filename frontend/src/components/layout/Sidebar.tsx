@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ArrowUpDown, Wallet, Tag, Tags, CreditCard,
   BarChart2, Users, Settings, TrendingUp, LogOut, ChevronLeft,
-  ChevronRight, PiggyBank, FileUp, BarChart3, Shield, Tv, Repeat
+  ChevronRight, PiggyBank, FileUp, BarChart3, Shield, Tv, Repeat, ShoppingCart
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,7 @@ const navItems = [
   { to: '/cards', icon: CreditCard, label: 'Cartões' },
   { to: '/subscriptions', icon: Tv, label: 'Assinaturas' },
   { to: '/recurring-expenses', icon: Repeat, label: 'Desp. Recorrentes' },
+  { to: '/shopping', icon: ShoppingCart, label: 'Compras Inteligentes' },
   { to: '/budget', icon: PiggyBank, label: 'Orçamentos' },
   { to: '/categories', icon: Tag, label: 'Categorias' },
   { to: '/tags', icon: Tags, label: 'Tags' },

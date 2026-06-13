@@ -22,6 +22,7 @@ import CategoriesPage from '@/pages/categories/CategoriesPage'
 import TagsPage from '@/pages/tags/TagsPage'
 import SubscriptionsPage from '@/pages/subscriptions/SubscriptionsPage'
 import RecurringExpensesPage from '@/pages/recurring/RecurringExpensesPage'
+import ShoppingPage from '@/pages/shopping/ShoppingPage'
 import CardsPage from '@/pages/cards/CardsPage'
 import BudgetPage from '@/pages/budget/BudgetPage'
 import ReportsPage from '@/pages/reports/ReportsPage'
@@ -79,6 +80,7 @@ export default function App() {
           <Route path="/cards" element={<CardsPage />} />
           <Route path="/subscriptions" element={<SubscriptionsPage />} />
           <Route path="/recurring-expenses" element={<RecurringExpensesPage />} />
+          <Route path="/shopping" element={<ShoppingPage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/imports" element={<ImportsPage />} />

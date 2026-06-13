@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp, TrendingDown, Wallet, CreditCard, AlertTriangle,
-  Clock, PiggyBank, ArrowUpDown, RefreshCw, Tv, Repeat, Percent
+  Clock, PiggyBank, ArrowUpDown, RefreshCw, Tv, Repeat, Percent, ShoppingCart
 } from 'lucide-react'
 import { dashboardApi } from '@/api/dashboard'
+import { shoppingApi } from '@/api/shopping'
 import { useAuthStore } from '@/store/authStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -95,6 +96,12 @@ export default function DashboardPage() {
     enabled: !!activeGroupId,
   })
 
+  const { data: shoppingSummary } = useQuery({
+    queryKey: ['shopping-summary', activeGroupId],
+    queryFn: () => shoppingApi.summary(activeGroupId!),
+    enabled: !!activeGroupId,
+  })
+
   if (!activeGroupId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
@@ -131,6 +138,7 @@ export default function DashboardPage() {
     { title: 'Assinaturas/mês', value: formatCurrency(data.totalMonthlySubscriptions), icon: Tv, colorClass: 'text-blue-600 dark:text-blue-400', subtitle: 'Serviços ativos' },
     { title: 'Recorrentes/mês', value: formatCurrency(data.totalMonthlyRecurringExpenses), icon: Repeat, colorClass: 'text-rose-600 dark:text-rose-400', subtitle: 'Despesas fixas' },
     { title: 'Fixas s/ Receita', value: formatPercent(data.recurringPercentOfIncome ?? 0), icon: Percent, colorClass: 'text-purple-600 dark:text-purple-400', subtitle: 'Assinaturas + recorrentes' },
+    { title: 'Supermercado/mês', value: formatCurrency(shoppingSummary?.monthTotal ?? 0), icon: ShoppingCart, colorClass: 'text-emerald-600 dark:text-emerald-400', subtitle: `${shoppingSummary?.monthPurchaseCount ?? 0} compra(s)` },
   ]
 
   const monthlyData = data.monthlyEvolution.map(item => ({

@@ -268,6 +268,104 @@ export interface RecurringExpenseSummary {
   nextDueAmount?: number
 }
 
+// ============ SMART SHOPPING ============
+export type ShoppingSourceType = 'QR_CODE' | 'NFC_URL' | 'MANUAL' | 'SHOPPING_LIST'
+export type PurchaseStatus = 'RASCUNHO' | 'FINALIZADA' | 'LANCADA_NO_FINANCEIRO' | 'CANCELADA'
+export type ExtractionStatus = 'IMPORTADO_COM_SUCESSO' | 'IMPORTADO_PARCIALMENTE' | 'FALHA_NA_IMPORTACAO'
+export type ShoppingListStatus = 'ABERTA' | 'EM_COMPRA' | 'FINALIZADA' | 'CONVERTIDA_EM_COMPRA' | 'CANCELADA'
+
+export interface ShoppingPurchaseItem {
+  id: string
+  productName: string
+  category?: string
+  quantity?: number
+  unit?: string
+  unitPrice?: number
+  totalPrice?: number
+  brand?: string
+  productCode?: string
+}
+
+export interface ShoppingPurchase {
+  id: string
+  storeName: string
+  storeCnpj?: string
+  purchaseDate: string
+  totalAmount?: number
+  paymentMethod?: string
+  accountId?: string
+  accountName?: string
+  creditCardId?: string
+  creditCardName?: string
+  categoryId?: string
+  categoryName?: string
+  sourceType: ShoppingSourceType
+  qrCodeUrl?: string
+  accessKey?: string
+  extractionStatus?: ExtractionStatus
+  extractionError?: string
+  financialTransactionId?: string
+  status: PurchaseStatus
+  notes?: string
+  items: ShoppingPurchaseItem[]
+  createdAt: string
+}
+
+export interface ShoppingSummary {
+  monthTotal: number
+  monthPurchaseCount: number
+  lastPurchaseDate?: string
+  lastPurchaseStore?: string
+  lastPurchaseAmount?: number
+  trackedProducts: number
+}
+
+export interface PriceHistoryEntry {
+  unitPrice: number
+  quantity?: number
+  unit?: string
+  storeName?: string
+  purchaseDate: string
+}
+
+export interface PriceHistory {
+  normalizedProductName: string
+  productName: string
+  lastPrice?: number
+  minPrice?: number
+  maxPrice?: number
+  lastStoreName?: string
+  lastPurchaseDate?: string
+  records: number
+  history: PriceHistoryEntry[]
+}
+
+export interface ShoppingListItem {
+  id: string
+  productName: string
+  category?: string
+  quantity?: number
+  unit?: string
+  estimatedUnitPrice?: number
+  estimatedTotalPrice?: number
+  lastPaidPrice?: number
+  preferredStore?: string
+  checked: boolean
+  realUnitPrice?: number
+  realTotalPrice?: number
+}
+
+export interface ShoppingList {
+  id: string
+  name: string
+  description?: string
+  status: ShoppingListStatus
+  estimatedTotal?: number
+  convertedPurchaseId?: string
+  items: ShoppingListItem[]
+  createdAt: string
+}
+
 // ============ COST CENTER ============
 export interface CostCenter {
   id: string
