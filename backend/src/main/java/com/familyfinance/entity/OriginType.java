@@ -9,5 +9,6 @@ package com.familyfinance.entity;
 public enum OriginType {
     MANUAL,
     SUBSCRIPTION,
-    RECURRING_EXPENSE
+    RECURRING_EXPENSE,
+    SHOPPING_PURCHASE
 }

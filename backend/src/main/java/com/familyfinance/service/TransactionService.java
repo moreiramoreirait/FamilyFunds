@@ -315,4 +315,43 @@ public class TransactionService {
 
         return transactionRepository.save(builder.build());
     }
+
+    /**
+     * Cria um lançamento de despesa ÚNICO (não recorrente) a partir de uma origem
+     * (ex: compra de supermercado). O status é escolhido pelo chamador: se PAID e
+     * houver conta, o saldo é debitado na hora (como um lançamento manual pago).
+     * Dedupe é responsabilidade do chamador (ex: checar financial_transaction_id).
+     */
+    @Transactional
+    public Transaction createForOrigin(
+            UUID familyGroupId, OriginType originType, UUID originId,
+            LocalDate date, String description, BigDecimal amount,
+            TransactionStatus status, UUID accountId, UUID creditCardId, UUID categoryId,
+            User owner) {
+        FamilyGroup group = new FamilyGroup();
+        group.setId(familyGroupId);
+
+        Transaction.TransactionBuilder builder = Transaction.builder()
+                .familyGroup(group)
+                .type(TransactionType.EXPENSE)
+                .description(description)
+                .amount(amount)
+                .transactionDate(date)
+                .dueDate(date)
+                .status(status != null ? status : TransactionStatus.PENDING)
+                .isRecurring(false)
+                .originType(originType)
+                .originId(originId)
+                .createdBy(owner);
+
+        if (accountId != null) { Account a = new Account(); a.setId(accountId); builder.account(a); }
+        if (creditCardId != null) { CreditCard c = new CreditCard(); c.setId(creditCardId); builder.creditCard(c); }
+        if (categoryId != null) { Category cat = new Category(); cat.setId(categoryId); builder.category(cat); }
+
+        Transaction t = transactionRepository.save(builder.build());
+        if (t.getStatus() == TransactionStatus.PAID && accountId != null) {
+            updateAccountBalance(t, true);
+        }
+        return t;
+    }
 }
