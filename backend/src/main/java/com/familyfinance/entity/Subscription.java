@@ -38,6 +38,10 @@ public class Subscription {
     @Column(name = "stripe_subscription_id")
     private String stripeSubscriptionId;
 
+    @Column(name = "payment_pending", nullable = false)
+    @Builder.Default
+    private boolean paymentPending = false;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

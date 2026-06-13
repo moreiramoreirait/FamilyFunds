@@ -131,6 +131,7 @@ public class StripeService {
 
         switch (event.getType()) {
             case "checkout.session.completed" -> handleCheckoutCompleted(event);
+            case "customer.subscription.updated" -> handleSubscriptionUpdated(event);
             case "customer.subscription.deleted" -> handleSubscriptionDeleted(event);
             case "invoice.payment_failed" -> handlePaymentFailed(event);
             default -> log.debug("Unhandled Stripe event type: {}", event.getType());
@@ -174,6 +175,21 @@ public class StripeService {
 
         saveEvent(event.getId(), event.getType(), groupId, plan, null);
         log.info("Activated {} plan for group {}", plan, groupId);
+    }
+
+    private void handleSubscriptionUpdated(Event event) {
+        com.stripe.model.Subscription stripeSub = (com.stripe.model.Subscription) extractObject(event);
+        subscriptionRepository.findByStripeSubscriptionId(stripeSub.getId()).ifPresent(sub -> {
+            String status = stripeSub.getStatus(); // active, past_due, unpaid, canceled, ...
+            boolean pending = "past_due".equals(status) || "unpaid".equals(status);
+            if (sub.isPaymentPending() != pending) {
+                sub.setPaymentPending(pending);
+                subscriptionRepository.save(sub);
+                log.info("Subscription do grupo {} payment_pending={} (status Stripe: {})",
+                        sub.getFamilyGroup().getId(), pending, status);
+            }
+            saveEvent(event.getId(), event.getType(), sub.getFamilyGroup().getId(), null, null);
+        });
     }
 
     private void handleSubscriptionDeleted(Event event) {

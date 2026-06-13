@@ -24,5 +24,6 @@ public record SubscriptionResponse(
     boolean aiEnabled,
     boolean advancedReports,
     String displayName,
-    double priceMonthly
+    double priceMonthly,
+    boolean paymentPending
 ) {}

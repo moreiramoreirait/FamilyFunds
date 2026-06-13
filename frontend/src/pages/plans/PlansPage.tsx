@@ -224,6 +224,17 @@ export default function PlansPage() {
         </div>
       )}
 
+      {/* Payment pending warning */}
+      {subscription?.paymentPending && subscription.effectivePlan !== 'FREE' && (
+        <div className="flex items-center justify-center gap-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700 rounded-xl px-4 py-3 text-sm text-rose-800 dark:text-rose-300">
+          <Zap className="h-4 w-4 flex-shrink-0" />
+          <span>
+            <strong>Pagamento pendente.</strong> Não conseguimos cobrar sua assinatura — atualize seu cartão para não perder o acesso.{' '}
+            <button onClick={() => portalMutation.mutate()} className="underline font-medium">Gerenciar faturamento</button>
+          </span>
+        </div>
+      )}
+
       {/* Current plan summary */}
       {subscription && (
         <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground flex-wrap">

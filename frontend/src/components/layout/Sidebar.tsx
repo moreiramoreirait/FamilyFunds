@@ -55,9 +55,15 @@ export default function Sidebar() {
 
   const planBadgeKey = subscription?.trialActive ? 'TRIAL' : (subscription?.effectivePlan ?? 'FREE')
   const planBadge = planBadgeConfig[planBadgeKey] ?? planBadgeConfig.FREE
-  const trialLabel = subscription?.trialActive
-    ? `Trial - ${subscription.trialDaysLeft}d`
-    : planBadge.label
+  const paymentPending = !!subscription?.paymentPending && subscription?.effectivePlan !== 'FREE'
+  const badgeClassName = paymentPending
+    ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+    : planBadge.className
+  const trialLabel = paymentPending
+    ? 'Pagamento pendente'
+    : subscription?.trialActive
+      ? `Trial - ${subscription.trialDaysLeft}d`
+      : planBadge.label
 
   return (
     <aside className={cn(
@@ -140,7 +146,7 @@ export default function Sidebar() {
             onClick={() => navigate('/plans')}
             className={cn(
               'w-full flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-medium transition-colors hover:opacity-80',
-              planBadge.className
+              badgeClassName
             )}
           >
             {trialLabel}

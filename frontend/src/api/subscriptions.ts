@@ -36,6 +36,7 @@ export interface Subscription {
   advancedReports: boolean
   displayName: string
   priceMonthly: number
+  paymentPending: boolean
 }
 
 export interface Plan {

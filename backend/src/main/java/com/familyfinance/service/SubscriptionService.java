@@ -262,7 +262,8 @@ public class SubscriptionService {
                 eff.getMaxUsers(), eff.getMaxAccounts(), eff.getMaxCreditCards(),
                 eff.getMaxTransactionsPerMonth(), eff.getMaxImportsPerMonth(),
                 eff.isAiEnabled(), eff.isAdvancedReports(),
-                eff.getDisplayName(), eff.getPriceMonthly()
+                eff.getDisplayName(), eff.getPriceMonthly(),
+                sub.isPaymentPending()
         );
     }
 }
