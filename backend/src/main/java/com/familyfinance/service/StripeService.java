@@ -139,9 +139,24 @@ public class StripeService {
 
     // ─── Private helpers ──────────────────────────────────────────────────────
 
+    /**
+     * Extrai o objeto do evento de forma resiliente a diferenças de versão da API
+     * do Stripe. Quando a versão da conta é mais nova que a do SDK, getObject()
+     * retorna vazio; nesse caso usamos deserializeUnsafe() (parse direto do JSON do
+     * evento) para evitar 500 no webhook.
+     */
+    private com.stripe.model.StripeObject extractObject(Event event) {
+        return event.getDataObjectDeserializer().getObject().orElseGet(() -> {
+            try {
+                return event.getDataObjectDeserializer().deserializeUnsafe();
+            } catch (com.stripe.exception.EventDataObjectDeserializationException e) {
+                throw new BusinessException("Falha ao desserializar evento Stripe: " + e.getMessage());
+            }
+        });
+    }
+
     private void handleCheckoutCompleted(Event event) {
-        Session session = (Session) event.getDataObjectDeserializer()
-                .getObject().orElseThrow();
+        Session session = (Session) extractObject(event);
 
         String groupIdStr = session.getMetadata().get("groupId");
         String planStr = session.getMetadata().get("plan");
@@ -162,8 +177,7 @@ public class StripeService {
     }
 
     private void handleSubscriptionDeleted(Event event) {
-        com.stripe.model.Subscription stripeSub = (com.stripe.model.Subscription)
-                event.getDataObjectDeserializer().getObject().orElseThrow();
+        com.stripe.model.Subscription stripeSub = (com.stripe.model.Subscription) extractObject(event);
 
         subscriptionRepository.findByStripeSubscriptionId(stripeSub.getId()).ifPresent(sub -> {
             UUID groupId = sub.getFamilyGroup().getId();
@@ -174,7 +188,7 @@ public class StripeService {
     }
 
     private void handlePaymentFailed(Event event) {
-        Invoice invoice = (Invoice) event.getDataObjectDeserializer().getObject().orElseThrow();
+        Invoice invoice = (Invoice) extractObject(event);
         subscriptionRepository.findByStripeCustomerId(invoice.getCustomer()).ifPresent(sub -> {
             UUID groupId = sub.getFamilyGroup().getId();
             saveEvent(event.getId(), event.getType(), groupId, null, null);
