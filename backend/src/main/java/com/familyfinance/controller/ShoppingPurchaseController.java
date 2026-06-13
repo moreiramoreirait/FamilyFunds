@@ -1,13 +1,16 @@
 package com.familyfinance.controller;
 
 import com.familyfinance.dto.request.GenerateShoppingTransactionRequest;
+import com.familyfinance.dto.request.ImportReceiptRequest;
 import com.familyfinance.dto.request.ShoppingPurchaseRequest;
 import com.familyfinance.dto.response.PriceHistoryResponse;
 import com.familyfinance.dto.response.ShoppingPurchaseResponse;
 import com.familyfinance.dto.response.ShoppingSummaryResponse;
 import com.familyfinance.entity.MemberRole;
+import com.familyfinance.entity.ShoppingSourceType;
 import com.familyfinance.entity.User;
 import com.familyfinance.service.FamilyGroupService;
+import com.familyfinance.service.NfceImportService;
 import com.familyfinance.service.ShoppingPurchaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -30,6 +33,7 @@ import java.util.UUID;
 public class ShoppingPurchaseController {
 
     private final ShoppingPurchaseService service;
+    private final NfceImportService nfceImportService;
     private final FamilyGroupService familyGroupService;
 
     @GetMapping("/purchases")
@@ -98,6 +102,26 @@ public class ShoppingPurchaseController {
             @Valid @RequestBody GenerateShoppingTransactionRequest req, @AuthenticationPrincipal User user) {
         familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
         return ResponseEntity.ok(service.generateTransaction(groupId, id, req, user));
+    }
+
+    @PostMapping("/receipts/import-from-url")
+    @Operation(summary = "Importar NFC-e por link colado (parser no backend; fallback manual se falhar)")
+    public ResponseEntity<ShoppingPurchaseResponse> importFromUrl(
+            @PathVariable UUID groupId, @Valid @RequestBody ImportReceiptRequest req,
+            @AuthenticationPrincipal User user) {
+        familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(nfceImportService.importReceipt(groupId, req.url(), ShoppingSourceType.NFC_URL, user));
+    }
+
+    @PostMapping("/receipts/import-from-qrcode")
+    @Operation(summary = "Importar NFC-e a partir da URL lida do QR Code")
+    public ResponseEntity<ShoppingPurchaseResponse> importFromQrCode(
+            @PathVariable UUID groupId, @Valid @RequestBody ImportReceiptRequest req,
+            @AuthenticationPrincipal User user) {
+        familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(nfceImportService.importReceipt(groupId, req.url(), ShoppingSourceType.QR_CODE, user));
     }
 
     @GetMapping("/price-history")

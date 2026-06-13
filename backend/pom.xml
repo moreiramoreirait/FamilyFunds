@@ -136,6 +136,12 @@
             <artifactId>openpdf</artifactId>
             <version>1.3.43</version>
         </dependency>
+        <!-- Jsoup — parser HTML da NFC-e (Compras Inteligentes) -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
     </dependencies>
 
             <build>
