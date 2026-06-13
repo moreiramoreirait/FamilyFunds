@@ -1,5 +1,6 @@
 package com.familyfinance.dto.response;
 
+import com.familyfinance.entity.OriginType;
 import com.familyfinance.entity.RecurrenceType;
 import com.familyfinance.entity.TransactionStatus;
 import com.familyfinance.entity.TransactionType;
@@ -40,5 +41,6 @@ public record TransactionResponse(
         String notes,
         String attachmentUrl,
         List<TagResponse> tags,
+        OriginType originType,
         LocalDateTime createdAt
 ) {}

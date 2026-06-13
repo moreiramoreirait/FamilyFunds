@@ -54,6 +54,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
 
     long countByFamilyGroupIdAndCreatedAtBetween(UUID familyGroupId, LocalDateTime start, LocalDateTime end);
 
+    // Dedup de lançamentos gerados por origem recorrente (assinatura/despesa)
+    boolean existsByOriginTypeAndOriginIdAndRecurrenceReferenceDate(
+            com.familyfinance.entity.OriginType originType, UUID originId, LocalDate recurrenceReferenceDate);
+
     List<Transaction> findByFamilyGroupIdAndTransactionDateBetweenAndStatus(
             UUID familyGroupId, LocalDate start, LocalDate end, TransactionStatus status);
 

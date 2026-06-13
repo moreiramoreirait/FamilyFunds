@@ -116,6 +116,17 @@ public class Transaction {
     @Column(name = "attachment_url")
     private String attachmentUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origin_type", nullable = false, length = 20)
+    @Builder.Default
+    private OriginType originType = OriginType.MANUAL;
+
+    @Column(name = "origin_id")
+    private UUID originId;
+
+    @Column(name = "recurrence_reference_date")
+    private LocalDate recurrenceReferenceDate;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "transaction_tags",

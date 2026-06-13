@@ -274,7 +274,45 @@ public class TransactionService {
                 t.getStatus(), t.getIsRecurring(), t.getRecurrenceType(),
                 t.getIsInstallment(), t.getInstallmentNumber(), t.getInstallmentTotal(),
                 t.getInstallmentGroupId(), t.getNotes(), t.getAttachmentUrl(),
-                tags, t.getCreatedAt()
+                tags, t.getOriginType(), t.getCreatedAt()
         );
+    }
+
+    /**
+     * Cria um lançamento gerado por uma origem recorrente (assinatura/despesa recorrente).
+     * Entra como PENDING (não afeta saldo até ser marcado como pago, via markAsPaid).
+     * Não chama checkTransactionLimit: é geração de sistema e não deve quebrar o lote
+     * nem bloquear cobranças recorrentes. A dedupe é responsabilidade do chamador
+     * (ver existsByOriginTypeAndOriginIdAndRecurrenceReferenceDate).
+     */
+    @Transactional
+    public Transaction createGenerated(
+            UUID familyGroupId, OriginType originType, UUID originId,
+            LocalDate referenceDate, String description, BigDecimal amount,
+            UUID accountId, UUID creditCardId, UUID categoryId, UUID costCenterId,
+            User owner) {
+        FamilyGroup group = new FamilyGroup();
+        group.setId(familyGroupId);
+
+        Transaction.TransactionBuilder builder = Transaction.builder()
+                .familyGroup(group)
+                .type(TransactionType.EXPENSE)
+                .description(description)
+                .amount(amount)
+                .transactionDate(referenceDate)
+                .dueDate(referenceDate)
+                .status(TransactionStatus.PENDING)
+                .isRecurring(true)
+                .originType(originType)
+                .originId(originId)
+                .recurrenceReferenceDate(referenceDate)
+                .createdBy(owner);
+
+        if (accountId != null) { Account a = new Account(); a.setId(accountId); builder.account(a); }
+        if (creditCardId != null) { CreditCard c = new CreditCard(); c.setId(creditCardId); builder.creditCard(c); }
+        if (categoryId != null) { Category cat = new Category(); cat.setId(categoryId); builder.category(cat); }
+        if (costCenterId != null) { CostCenter cc = new CostCenter(); cc.setId(costCenterId); builder.costCenter(cc); }
+
+        return transactionRepository.save(builder.build());
     }
 }

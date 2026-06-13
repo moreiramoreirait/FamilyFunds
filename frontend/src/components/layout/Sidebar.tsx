@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ArrowUpDown, Wallet, Tag, Tags, CreditCard,
   BarChart2, Users, Settings, TrendingUp, LogOut, ChevronLeft,
-  ChevronRight, PiggyBank, FileUp, BarChart3, Shield
+  ChevronRight, PiggyBank, FileUp, BarChart3, Shield, Tv
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -18,6 +18,7 @@ const navItems = [
   { to: '/transactions', icon: ArrowUpDown, label: 'Lançamentos' },
   { to: '/accounts', icon: Wallet, label: 'Contas' },
   { to: '/cards', icon: CreditCard, label: 'Cartões' },
+  { to: '/subscriptions', icon: Tv, label: 'Assinaturas' },
   { to: '/budget', icon: PiggyBank, label: 'Orçamentos' },
   { to: '/categories', icon: Tag, label: 'Categorias' },
   { to: '/tags', icon: Tags, label: 'Tags' },

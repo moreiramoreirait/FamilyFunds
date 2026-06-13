@@ -196,6 +196,41 @@ export interface CreditCardInvoice {
   status: InvoiceStatus
 }
 
+// ============ SERVICE SUBSCRIPTION ============
+export type ServiceSubscriptionStatus = 'ACTIVE' | 'PAUSED' | 'CANCELLED'
+
+export interface ServiceSubscription {
+  id: string
+  name: string
+  description?: string
+  amount: number
+  billingDay?: number
+  startDate?: string
+  endDate?: string
+  status: ServiceSubscriptionStatus
+  categoryId?: string
+  categoryName?: string
+  costCenterId?: string
+  costCenterName?: string
+  paymentAccountId?: string
+  paymentAccountName?: string
+  creditCardId?: string
+  creditCardName?: string
+  paymentMethod?: string
+  recurrenceType: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+  nextChargeDate?: string
+  createdAt: string
+}
+
+export interface ServiceSubscriptionSummary {
+  activeCount: number
+  pausedCount: number
+  monthlyTotal: number
+  nextChargeDate?: string
+  nextChargeName?: string
+  nextChargeAmount?: number
+}
+
 // ============ COST CENTER ============
 export interface CostCenter {
   id: string
