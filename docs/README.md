@@ -337,8 +337,9 @@ POST   /api/v1/family-groups/{groupId}/shopping/lists/{id}/convert-to-purchase  
 | `CORS_ALLOWED_ORIGINS` | Sim | URLs permitidas pelo CORS |
 | `MAIL_HOST` | Não | smtp.gmail.com |
 | `MAIL_PORT` | Não | 587 |
-| `MAIL_USERNAME` | Não | E-mail para envio |
-| `MAIL_PASSWORD` | Não | App password Gmail |
+| `MAIL_USERNAME` | Não | Usuário SMTP (Gmail: seu e-mail · Brevo: `xxxx@smtp-brevo.com`) |
+| `MAIL_PASSWORD` | Não | Senha SMTP (Gmail: App Password · Brevo: SMTP key) |
+| `MAIL_FROM` | Não* | Remetente. **Obrigatório no Brevo** (deve ser um sender verificado) |
 | `STRIPE_SECRET_KEY` | Não* | Chave secreta da API Stripe (Fase 3) |
 | `STRIPE_WEBHOOK_SECRET` | Não* | Secret de assinatura do webhook |
 | `STRIPE_PRICE_ESSENCIAL` | Não* | Price ID do plano Essencial |

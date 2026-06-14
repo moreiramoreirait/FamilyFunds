@@ -114,7 +114,7 @@ UPDATE users SET is_system_admin = true WHERE email = 'admin@seudominio.com';
 
 Obrigatórias: `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `FLYWAY_URL`, `FLYWAY_USER`, `FLYWAY_PASSWORD`, `JWT_SECRET`, `ENCRYPTION_KEY`, `FRONTEND_URL`, `CORS_ALLOWED_ORIGINS`
 
-Opcionais: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+Opcionais: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` (remetente — obrigatório no Brevo: sender verificado)
 
 > **Não defina `PORT`** — o Render injeta `PORT=10000` automaticamente.
 

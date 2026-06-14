@@ -19,11 +19,22 @@ public class EmailService {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    /** Remetente. Em provedores como Brevo precisa ser um sender verificado. */
+    @Value("${app.mail.from:}")
+    private String fromEmail;
+
+    private void applyFrom(SimpleMailMessage msg) {
+        if (fromEmail != null && !fromEmail.isBlank()) {
+            msg.setFrom(fromEmail);
+        }
+    }
+
     @Async
     public void sendInviteEmail(FamilyGroupInvite invite, String groupName) {
         try {
             String acceptLink = frontendUrl + "/invite/accept?token=" + invite.getToken();
             SimpleMailMessage msg = new SimpleMailMessage();
+            applyFrom(msg);
             msg.setTo(invite.getEmail());
             msg.setSubject("Convite para o grupo " + groupName + " — FamilyFunds");
             msg.setText(
@@ -47,6 +58,7 @@ public class EmailService {
         try {
             String pct = Math.round((double) used / max * 100) + "%";
             SimpleMailMessage msg = new SimpleMailMessage();
+            applyFrom(msg);
             msg.setTo(adminEmail);
             msg.setSubject("Limite de uso próximo — " + groupName + " | FamilyFunds");
             msg.setText(
