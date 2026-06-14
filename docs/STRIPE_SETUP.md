@@ -67,8 +67,9 @@ O Stripe avisa o backend quando um pagamento é concluído/cancelado/falha.
    ```
    https://familyfunds-api.onrender.com/api/v1/webhooks/stripe
    ```
-3. Em **Selecionar eventos**, marque exatamente estes 3 (são os que o backend trata):
+3. Em **Selecionar eventos**, marque exatamente estes 4 (são os que o backend trata):
    - `checkout.session.completed`
+   - `customer.subscription.updated`  ← liga/desliga o aviso de "Pagamento pendente" (past_due/unpaid)
    - `customer.subscription.deleted`
    - `invoice.payment_failed`
 4. Criar endpoint.
