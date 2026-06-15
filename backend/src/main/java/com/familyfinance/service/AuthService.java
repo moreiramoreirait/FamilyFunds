@@ -44,7 +44,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new BusinessException("Email already registered: " + request.email());
+            throw new BusinessException("E-mail já cadastrado: " + request.email());
         }
 
         User user = User.builder()
@@ -71,7 +71,7 @@ public class AuthService {
         );
 
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new BusinessException("User not found"));
+                .orElseThrow(() -> new BusinessException("Usuário não encontrado"));
 
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);

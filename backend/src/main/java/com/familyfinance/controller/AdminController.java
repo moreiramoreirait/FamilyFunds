@@ -23,7 +23,7 @@ public class AdminController {
 
     private void requireSystemAdmin(User user) {
         if (!Boolean.TRUE.equals(user.getIsSystemAdmin())) {
-            throw new UnauthorizedException("System admin access required");
+            throw new UnauthorizedException("Acesso restrito a administradores do sistema");
         }
     }
 

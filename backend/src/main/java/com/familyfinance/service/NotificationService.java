@@ -27,7 +27,7 @@ public class NotificationService {
 
     private void assertMember(UUID groupId, UUID userId) {
         if (!memberRepository.existsByFamilyGroupIdAndUserIdAndIsActiveTrue(groupId, userId)) {
-            throw new UnauthorizedException("You are not a member of this family group");
+            throw new UnauthorizedException("Você não é membro deste grupo familiar");
         }
     }
 

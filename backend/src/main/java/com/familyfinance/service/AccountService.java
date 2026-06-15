@@ -95,7 +95,7 @@ public class AccountService {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", "id", accountId));
         if (!account.getFamilyGroup().getId().equals(familyGroupId)) {
-            throw new BusinessException("Account does not belong to this group");
+            throw new BusinessException("A conta não pertence a este grupo");
         }
         return account;
     }

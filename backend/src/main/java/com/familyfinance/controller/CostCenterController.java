@@ -44,7 +44,7 @@ public class CostCenterController {
     public ResponseEntity<CostCenterResponse> create(@PathVariable UUID groupId, @Valid @RequestBody CostCenterRequest req, @AuthenticationPrincipal User user) {
         familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
         if (costCenterRepository.existsByFamilyGroupIdAndNameIgnoreCase(groupId, req.name())) {
-            throw new BusinessException("Cost center with this name already exists");
+            throw new BusinessException("Já existe um centro de custo com esse nome");
         }
         FamilyGroup group = new FamilyGroup(); group.setId(groupId);
         CostCenter cc = CostCenter.builder().familyGroup(group).name(req.name()).description(req.description())

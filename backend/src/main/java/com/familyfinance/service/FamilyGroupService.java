@@ -98,51 +98,60 @@ public class FamilyGroupService {
     @Transactional
     public void inviteMember(UUID groupId, InviteMemberRequest request, User currentUser) {
         assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
-        subscriptionService.checkMemberLimit(groupId);
 
-        // Check if already a member
-        userRepository.findByEmail(request.email()).ifPresent(u -> {
+        String email = request.email().toLowerCase();
+
+        // Já é membro do grupo?
+        userRepository.findByEmail(email).ifPresent(u -> {
             if (memberRepository.existsByFamilyGroupIdAndUserIdAndIsActiveTrue(groupId, u.getId())) {
-                throw new BusinessException("User is already a member of this group");
+                throw new BusinessException("Esta pessoa já é membro do grupo");
             }
         });
-
-        // Check if pending invite exists
-        inviteRepository.findByEmailAndFamilyGroupIdAndStatus(request.email(), groupId, InviteStatus.PENDING)
-                .ifPresent(i -> { throw new BusinessException("Pending invite already exists for this email"); });
 
         FamilyGroup group = familyGroupRepository.findById(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("FamilyGroup", "id", groupId));
 
-        FamilyGroupInvite invite = FamilyGroupInvite.builder()
-                .familyGroup(group)
-                .invitedBy(currentUser)
-                .email(request.email().toLowerCase())
-                .role(request.role())
-                .token(UUID.randomUUID().toString())
-                .status(InviteStatus.PENDING)
-                .expiresAt(LocalDateTime.now().plusDays(7))
-                .build();
+        // Já existe convite pendente? Reenvia (renova token e validade) em vez de duplicar.
+        FamilyGroupInvite invite = inviteRepository
+                .findByEmailAndFamilyGroupIdAndStatus(email, groupId, InviteStatus.PENDING)
+                .orElse(null);
+        if (invite != null) {
+            invite.setRole(request.role());
+            invite.setInvitedBy(currentUser);
+            invite.setToken(UUID.randomUUID().toString());
+            invite.setExpiresAt(LocalDateTime.now().plusDays(7));
+        } else {
+            subscriptionService.checkMemberLimit(groupId);
+            invite = FamilyGroupInvite.builder()
+                    .familyGroup(group)
+                    .invitedBy(currentUser)
+                    .email(email)
+                    .role(request.role())
+                    .token(UUID.randomUUID().toString())
+                    .status(InviteStatus.PENDING)
+                    .expiresAt(LocalDateTime.now().plusDays(7))
+                    .build();
+        }
         inviteRepository.save(invite);
         emailService.sendInviteEmail(invite, group.getName());
-        log.info("Invite sent to {} for group {}", request.email(), groupId);
+        log.info("Invite sent to {} for group {}", email, groupId);
     }
 
     @Transactional
     public void acceptInvite(String token, User currentUser) {
         FamilyGroupInvite invite = inviteRepository.findByToken(token)
-                .orElseThrow(() -> new ResourceNotFoundException("Invite not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Convite não encontrado"));
 
         if (!invite.getStatus().equals(InviteStatus.PENDING)) {
-            throw new BusinessException("Invite is no longer valid");
+            throw new BusinessException("Este convite não é mais válido");
         }
         if (invite.getExpiresAt().isBefore(LocalDateTime.now())) {
             invite.setStatus(InviteStatus.EXPIRED);
             inviteRepository.save(invite);
-            throw new BusinessException("Invite has expired");
+            throw new BusinessException("Este convite expirou");
         }
         if (!invite.getEmail().equalsIgnoreCase(currentUser.getEmail())) {
-            throw new UnauthorizedException("This invite was not sent to your email");
+            throw new UnauthorizedException("Este convite foi enviado para outro e-mail");
         }
 
         FamilyGroupMember member = FamilyGroupMember.builder()
@@ -166,14 +175,14 @@ public class FamilyGroupService {
 
     public void assertMember(UUID groupId, UUID userId) {
         if (!memberRepository.existsByFamilyGroupIdAndUserIdAndIsActiveTrue(groupId, userId)) {
-            throw new UnauthorizedException("You are not a member of this family group");
+            throw new UnauthorizedException("Você não é membro deste grupo familiar");
         }
     }
 
     public MemberRole getMemberRole(UUID groupId, UUID userId) {
         return memberRepository.findByFamilyGroupIdAndUserId(groupId, userId)
                 .map(FamilyGroupMember::getRole)
-                .orElseThrow(() -> new UnauthorizedException("Not a member of this group"));
+                .orElseThrow(() -> new UnauthorizedException("Você não é membro deste grupo"));
     }
 
     public void assertAdmin(UUID groupId, UUID userId) {
@@ -183,7 +192,7 @@ public class FamilyGroupService {
     public void assertRole(UUID groupId, UUID userId, MemberRole minimumRole) {
         MemberRole role = getMemberRole(groupId, userId);
         if (!hasMinimumRole(role, minimumRole)) {
-            throw new UnauthorizedException("Insufficient permissions. Required: " + minimumRole);
+            throw new UnauthorizedException("Permissão insuficiente. Necessário: " + minimumRole);
         }
     }
 

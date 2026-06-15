@@ -91,7 +91,7 @@ public class TransactionService {
     @Transactional
     public List<TransactionResponse> createInstallments(UUID familyGroupId, TransactionRequest request, User currentUser) {
         if (request.installmentTotal() == null || request.installmentTotal() < 2) {
-            throw new BusinessException("Installment total must be at least 2");
+            throw new BusinessException("O número de parcelas deve ser pelo menos 2");
         }
         FamilyGroup group = new FamilyGroup();
         group.setId(familyGroupId);
@@ -148,7 +148,7 @@ public class TransactionService {
     public TransactionResponse markAsPaid(UUID familyGroupId, UUID transactionId, LocalDate paidDate, User currentUser) {
         Transaction t = findAndValidate(familyGroupId, transactionId);
         if (t.getStatus() == TransactionStatus.PAID) {
-            throw new BusinessException("Transaction is already paid");
+            throw new BusinessException("Este lançamento já está pago");
         }
         TransactionStatus oldStatus = t.getStatus();
         t.setStatus(TransactionStatus.PAID);
@@ -263,7 +263,7 @@ public class TransactionService {
         Transaction t = transactionRepository.findById(transactionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction", "id", transactionId));
         if (!t.getFamilyGroup().getId().equals(familyGroupId)) {
-            throw new BusinessException("Transaction does not belong to this group");
+            throw new BusinessException("O lançamento não pertence a este grupo");
         }
         return t;
     }

@@ -30,7 +30,7 @@ public class CategoryService {
     @Transactional
     public CategoryResponse create(UUID familyGroupId, CategoryRequest request, User currentUser) {
         if (categoryRepository.existsByFamilyGroupIdAndNameIgnoreCase(familyGroupId, request.name())) {
-            throw new BusinessException("Category with this name already exists");
+            throw new BusinessException("Já existe uma categoria com esse nome");
         }
         FamilyGroup group = new FamilyGroup();
         group.setId(familyGroupId);
@@ -53,7 +53,7 @@ public class CategoryService {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
         if (!category.getFamilyGroup().getId().equals(familyGroupId)) {
-            throw new BusinessException("Category does not belong to this group");
+            throw new BusinessException("A categoria não pertence a este grupo");
         }
         category.setName(request.name());
         category.setType(request.type());
@@ -67,10 +67,10 @@ public class CategoryService {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
         if (!category.getFamilyGroup().getId().equals(familyGroupId)) {
-            throw new BusinessException("Category does not belong to this group");
+            throw new BusinessException("A categoria não pertence a este grupo");
         }
         if (Boolean.TRUE.equals(category.getIsSystem())) {
-            throw new BusinessException("System categories cannot be deleted");
+            throw new BusinessException("Categorias do sistema não podem ser excluídas");
         }
         category.setIsActive(false);
         categoryRepository.save(category);
