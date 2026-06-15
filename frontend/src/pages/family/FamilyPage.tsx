@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatDate, getInitials, getRoleLabel, cn } from '@/lib/utils'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { getInitials, getRoleLabel, cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import type { MemberRole } from '@/types'
 
@@ -70,14 +71,67 @@ function CreateGroupModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+function InviteModal({ groupId, onClose }: { groupId: string; onClose: () => void }) {
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState<MemberRole>('EDITOR')
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  const mutation = useMutation({
+    mutationFn: () => familyGroupsApi.invite(groupId, { email: email.trim(), role }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['family-groups'] })
+      toast({ title: 'Convite enviado', description: `Um e-mail foi enviado para ${email.trim()}` })
+      onClose()
+    },
+    onError: (e: any) => toast({ title: e?.response?.data?.message || 'Erro ao enviar convite', variant: 'destructive' }),
+  })
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <Card className="w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <CardHeader>
+          <CardTitle>Convidar membro</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>E-mail</Label>
+            <Input type="email" placeholder="pessoa@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Papel</Label>
+            <Select value={role} onValueChange={v => setRole(v as MemberRole)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ADMIN">Administrador — acesso total</SelectItem>
+                <SelectItem value="EDITOR">Editor — cria e edita lançamentos</SelectItem>
+                <SelectItem value="VIEWER">Visualizador — somente leitura</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            A pessoa recebe um e-mail com um link para aceitar o convite (válido por 7 dias).
+          </p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button disabled={!email.trim() || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Enviando…' : 'Enviar convite'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export default function FamilyPage() {
   const { data: groups = [], isLoading } = useQuery({
     queryKey: ['family-groups'],
     queryFn: familyGroupsApi.list,
   })
   const { currentGroupId, setCurrentGroup } = useAuthStore()
-  const { toast } = useToast()
   const [showCreate, setShowCreate] = useState(false)
+  const [inviteGroupId, setInviteGroupId] = useState<string | null>(null)
 
   const activeGroup = groups.find(g => g.id === currentGroupId) || groups[0]
 
@@ -171,7 +225,7 @@ export default function FamilyPage() {
                       {group.currentUserRole === 'ADMIN' && (
                         <button
                           className="flex items-center gap-2 border-2 border-dashed border-border rounded-lg px-3 py-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
-                          onClick={() => toast({ title: 'Em breve', description: 'Envio de convites' })}
+                          onClick={() => setInviteGroupId(group.id)}
                         >
                           <UserPlus className="h-4 w-4" />
                           <span className="text-sm">Convidar</span>
@@ -187,6 +241,7 @@ export default function FamilyPage() {
       )}
 
       {showCreate && <CreateGroupModal onClose={() => setShowCreate(false)} />}
+      {inviteGroupId && <InviteModal groupId={inviteGroupId} onClose={() => setInviteGroupId(null)} />}
     </div>
   )
 }
