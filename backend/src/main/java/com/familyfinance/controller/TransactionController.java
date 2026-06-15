@@ -100,7 +100,7 @@ public class TransactionController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate paidDate,
             @AuthenticationPrincipal User user) {
         familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
-        return ResponseEntity.ok(transactionService.markAsPaid(groupId, transactionId, paidDate));
+        return ResponseEntity.ok(transactionService.markAsPaid(groupId, transactionId, paidDate, user));
     }
 
     @DeleteMapping("/{transactionId}")

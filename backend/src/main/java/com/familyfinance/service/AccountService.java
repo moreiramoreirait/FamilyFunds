@@ -22,6 +22,7 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final SubscriptionService subscriptionService;
+    private final NotificationService notificationService;
 
     public List<AccountResponse> getAll(UUID familyGroupId) {
         return accountRepository.findByFamilyGroupIdAndIsActiveTrueOrderByNameAsc(familyGroupId)
@@ -55,7 +56,12 @@ public class AccountService {
                 .notes(request.notes())
                 .createdBy(currentUser)
                 .build();
-        return toResponse(accountRepository.save(account));
+        Account saved = accountRepository.save(account);
+        notificationService.notifyMembersOfAction(familyGroupId, currentUser.getId(),
+                "Nova conta",
+                String.format("%s criou a conta \"%s\"", currentUser.getName(), saved.getName()),
+                "ACCOUNT_CREATED");
+        return toResponse(saved);
     }
 
     @Transactional

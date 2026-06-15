@@ -34,6 +34,7 @@ public class TransactionService {
     private final TagRepository tagRepository;
     private final AccountService accountService;
     private final SubscriptionService subscriptionService;
+    private final NotificationService notificationService;
 
     public Page<TransactionResponse> getAll(UUID familyGroupId, int page, int size) {
         return getAll(familyGroupId, page, size, null, null, null, null, null, null, null);
@@ -75,6 +76,14 @@ public class TransactionService {
         if (request.accountId() != null && isPaid(t)) {
             updateAccountBalance(t, true);
         }
+
+        boolean income = t.getType() == TransactionType.INCOME;
+        notificationService.notifyMembersOfAction(familyGroupId, currentUser.getId(),
+                income ? "Nova receita" : "Nova despesa",
+                String.format("%s registrou %s \"%s\" — R$ %s",
+                        currentUser.getName(), income ? "a receita" : "a despesa",
+                        t.getDescription(), t.getAmount().toPlainString()),
+                "TRANSACTION_CREATED");
 
         return toResponse(t);
     }
@@ -136,7 +145,7 @@ public class TransactionService {
     }
 
     @Transactional
-    public TransactionResponse markAsPaid(UUID familyGroupId, UUID transactionId, LocalDate paidDate) {
+    public TransactionResponse markAsPaid(UUID familyGroupId, UUID transactionId, LocalDate paidDate, User currentUser) {
         Transaction t = findAndValidate(familyGroupId, transactionId);
         if (t.getStatus() == TransactionStatus.PAID) {
             throw new BusinessException("Transaction is already paid");
@@ -147,6 +156,13 @@ public class TransactionService {
         t = transactionRepository.save(t);
         if (t.getAccount() != null && oldStatus != TransactionStatus.PAID) {
             updateAccountBalance(t, true);
+        }
+        if (currentUser != null) {
+            notificationService.notifyMembersOfAction(familyGroupId, currentUser.getId(),
+                    "Conta paga",
+                    String.format("%s pagou \"%s\" — R$ %s",
+                            currentUser.getName(), t.getDescription(), t.getAmount().toPlainString()),
+                    "TRANSACTION_PAID");
         }
         return toResponse(t);
     }

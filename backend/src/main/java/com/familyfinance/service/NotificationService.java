@@ -1,9 +1,12 @@
 package com.familyfinance.service;
 
 import com.familyfinance.entity.*;
+import com.familyfinance.exception.UnauthorizedException;
 import com.familyfinance.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,21 +18,27 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final TransactionRepository transactionRepository;
     private final FamilyGroupMemberRepository memberRepository;
-    private final FamilyGroupService familyGroupService;
+
+    private void assertMember(UUID groupId, UUID userId) {
+        if (!memberRepository.existsByFamilyGroupIdAndUserIdAndIsActiveTrue(groupId, userId)) {
+            throw new UnauthorizedException("You are not a member of this family group");
+        }
+    }
 
     public List<Notification> findUnread(UUID groupId, User currentUser) {
-        familyGroupService.assertMember(groupId, currentUser.getId());
+        assertMember(groupId, currentUser.getId());
         return notificationRepository.findByUserIdAndIsReadFalseOrderByCreatedAtDesc(
                 currentUser.getId(), PageRequest.of(0, 50));
     }
 
     public List<Notification> findAll(UUID groupId, User currentUser) {
-        familyGroupService.assertMember(groupId, currentUser.getId());
+        assertMember(groupId, currentUser.getId());
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(
                 currentUser.getId(), PageRequest.of(0, 100));
     }
@@ -45,7 +54,7 @@ public class NotificationService {
     }
 
     public void markAllAsRead(UUID groupId, User currentUser) {
-        familyGroupService.assertMember(groupId, currentUser.getId());
+        assertMember(groupId, currentUser.getId());
         notificationRepository.markAllAsRead(currentUser.getId());
     }
 
@@ -94,6 +103,32 @@ public class NotificationService {
                     .build();
             notificationRepository.save(notification);
         });
+    }
+
+    /**
+     * Notifica os demais membros ativos do grupo sobre uma ação feita por um membro.
+     * Assíncrono e tolerante a falha — nunca quebra o fluxo principal (igual ao e-mail).
+     * O autor da ação (actorUserId) não é notificado.
+     */
+    @Async
+    public void notifyMembersOfAction(UUID groupId, UUID actorUserId, String title, String message, String type) {
+        try {
+            FamilyGroup group = new FamilyGroup();
+            group.setId(groupId);
+            memberRepository.findByFamilyGroupIdAndIsActiveTrue(groupId).forEach(member -> {
+                if (actorUserId != null && member.getUser().getId().equals(actorUserId)) return;
+                notificationRepository.save(Notification.builder()
+                        .familyGroup(group)
+                        .user(member.getUser())
+                        .type(type)
+                        .title(title)
+                        .message(message)
+                        .isRead(false)
+                        .build());
+            });
+        } catch (Exception e) {
+            log.error("Falha ao notificar membros do grupo {} (ação {})", groupId, type, e);
+        }
     }
 
     public void createNotification(FamilyGroup group, User user, String title, String message, String type) {

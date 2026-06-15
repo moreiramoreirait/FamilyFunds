@@ -26,6 +26,7 @@ public class CreditCardService {
     private final FamilyGroupService familyGroupService;
     private final AccountRepository accountRepository;
     private final SubscriptionService subscriptionService;
+    private final NotificationService notificationService;
 
     public List<CreditCardResponse> findAll(UUID groupId, User currentUser) {
         familyGroupService.assertMember(groupId, currentUser.getId());
@@ -62,7 +63,12 @@ public class CreditCardService {
                 .createdBy(currentUser)
                 .build();
 
-        return toResponse(creditCardRepository.save(card));
+        CreditCard saved = creditCardRepository.save(card);
+        notificationService.notifyMembersOfAction(groupId, currentUser.getId(),
+                "Novo cartão",
+                String.format("%s adicionou o cartão \"%s\"", currentUser.getName(), saved.getName()),
+                "CARD_CREATED");
+        return toResponse(saved);
     }
 
     public CreditCardResponse update(UUID groupId, UUID cardId, CreditCardRequest req, User currentUser) {

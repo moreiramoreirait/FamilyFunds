@@ -29,6 +29,7 @@ public class FamilyGroupService {
     private final CategoryService categoryService;
     private final SubscriptionService subscriptionService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
 
     @Transactional
     public FamilyGroupResponse create(FamilyGroupRequest request, User currentUser) {
@@ -156,6 +157,11 @@ public class FamilyGroupService {
         invite.setStatus(InviteStatus.ACCEPTED);
         invite.setRespondedAt(LocalDateTime.now());
         inviteRepository.save(invite);
+
+        notificationService.notifyMembersOfAction(invite.getFamilyGroup().getId(), currentUser.getId(),
+                "Novo membro",
+                String.format("%s entrou no grupo", currentUser.getName()),
+                "MEMBER_JOINED");
     }
 
     public void assertMember(UUID groupId, UUID userId) {
