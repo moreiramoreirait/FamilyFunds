@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Users, UserPlus, Crown, Edit, Shield, Eye } from 'lucide-react'
+import { Plus, Users, UserPlus, Crown, Edit, Shield, Eye, Pencil } from 'lucide-react'
 import { familyGroupsApi } from '@/api/familyGroups'
 import { useAuthStore } from '@/store/authStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getInitials, getRoleLabel, cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
-import type { MemberRole } from '@/types'
+import type { MemberRole, FamilyGroup } from '@/types'
 
 const roleIcon: Record<MemberRole, React.ElementType> = {
   ADMIN: Crown, EDITOR: Edit, VIEWER: Eye
@@ -63,6 +63,49 @@ function CreateGroupModal({ onClose }: { onClose: () => void }) {
               onClick={() => mutation.mutate({ name: name.trim(), description: description.trim() || undefined })}
             >
               Criar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function EditGroupModal({ group, onClose }: { group: FamilyGroup; onClose: () => void }) {
+  const [name, setName] = useState(group.name)
+  const [description, setDescription] = useState(group.description || '')
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  const mutation = useMutation({
+    mutationFn: () => familyGroupsApi.update(group.id, { name: name.trim(), description: description.trim() || undefined }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['family-groups'] })
+      toast({ title: 'Família atualizada' })
+      onClose()
+    },
+    onError: (e: any) => toast({ title: e?.response?.data?.message || 'Erro ao atualizar família', variant: 'destructive' }),
+  })
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <Card className="w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <CardHeader>
+          <CardTitle>Editar família</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Nome da família</Label>
+            <Input placeholder="Ex: Família Moreira" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Descrição (opcional)</Label>
+            <Input placeholder="Breve descrição" value={description} onChange={e => setDescription(e.target.value)} />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button disabled={!name.trim() || mutation.isPending} onClick={() => mutation.mutate()}>
+              {mutation.isPending ? 'Salvando…' : 'Salvar'}
             </Button>
           </div>
         </CardContent>
@@ -132,6 +175,7 @@ export default function FamilyPage() {
   const { currentGroupId, setCurrentGroup } = useAuthStore()
   const [showCreate, setShowCreate] = useState(false)
   const [inviteGroupId, setInviteGroupId] = useState<string | null>(null)
+  const [editGroup, setEditGroup] = useState<FamilyGroup | null>(null)
 
   const activeGroup = groups.find(g => g.id === currentGroupId) || groups[0]
 
@@ -189,6 +233,11 @@ export default function FamilyPage() {
                         <RoleIcon className="h-3 w-3" />
                         {getRoleLabel(group.currentUserRole)}
                       </div>
+                      {group.currentUserRole === 'ADMIN' && (
+                        <Button variant="outline" size="sm" className="gap-1" onClick={() => setEditGroup(group)}>
+                          <Pencil className="h-3.5 w-3.5" /> Editar
+                        </Button>
+                      )}
                       {!isActive && (
                         <Button variant="outline" size="sm" onClick={() => setCurrentGroup(group.id)}>
                           Alternar
@@ -242,6 +291,7 @@ export default function FamilyPage() {
 
       {showCreate && <CreateGroupModal onClose={() => setShowCreate(false)} />}
       {inviteGroupId && <InviteModal groupId={inviteGroupId} onClose={() => setInviteGroupId(null)} />}
+      {editGroup && <EditGroupModal group={editGroup} onClose={() => setEditGroup(null)} />}
     </div>
   )
 }
