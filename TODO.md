@@ -241,6 +241,13 @@ src/
 - **Insights**: histórico básico aberto a todos; análises avançadas/IA reservadas ao PREMIUM (`aiEnabled`).
 - **Regra-chave**: a compra gera no máximo **um** lançamento (valor total); preços por item ficam só no módulo. Listas nunca geram despesa.
 
+### ✅ Fase 12 — Colaboração da família (convite, notificações, e-mail, gestão)
+- **Convite completo**: envio + **reenvio** (renova token/validade se já pendente); página pública `/invite/accept` que guarda o token e, após cadastro/login, chama `acceptInvite` e **associa ao grupo** (antes o link caía no login e não associava).
+- **Notificações de ações**: `NotificationService.notifyMembersOfAction` (@Async) avisa os demais membros (exceto o autor) ao criar/pagar lançamento, criar conta/cartão ou entrar no grupo. Sino no header com contador de não lidas, marcar uma/todas como lidas (`api/notifications.ts`).
+- **E-mail via API HTTP do Brevo**: o Render bloqueia SMTP de saída (587 → SocketTimeout); `EmailService` passou a usar `POST api.brevo.com/v3/smtp/email` (porta 443) quando `BREVO_API_KEY` está setada, com `MAIL_FROM` (sender verificado). Fallback SMTP para dev local.
+- **Gestão de família**: admin **renomeia** a família (modal na FamilyPage → `PUT /family-groups/{id}`). **Limite de famílias** por plano: FREE/Essencial = 1; Premium **pago** (não trial) libera ilimitado (`assertCanCreateFamily`). *Premium-ilimitado em avaliação (possível cobrança adicional acima de um limite — tier de consultoria financeira).* 
+- **i18n parcial**: mensagens de erro do sistema traduzidas para pt-BR.
+
 ---
 
 ## Roadmap — Próximas Fases

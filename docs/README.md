@@ -132,7 +132,8 @@ npm run dev
 
 | Feature | FREE | ESSENCIAL | PREMIUM |
 |---------|------|-----------|---------|
-| Usuários | 2 | 5 | Ilimitado |
+| Usuários (por família) | 2 | 5 | Ilimitado |
+| Famílias (por usuário) | 1 | 1 | Ilimitado* |
 | Contas bancárias | 2 | 10 | Ilimitado |
 | Cartões de crédito | 1 | 5 | Ilimitado |
 | Lançamentos/mês | 50 | 500 | Ilimitado |
@@ -142,6 +143,8 @@ npm run dev
 | Preço | Grátis | R$ 14,90/mês | R$ 29,90/mês |
 
 **Trial:** todo novo grupo ganha automaticamente 14 dias do plano PREMIUM.
+
+**Limite de famílias:** a assinatura é **por família**. O usuário cria 1 família no FREE/Essencial; ter alguma família em **Premium pago** (não trial) libera criar famílias adicionais (`SubscriptionService.assertCanCreateFamily`). \*O "ilimitado" do Premium está **em avaliação** — pode passar a ter cobrança adicional acima de um limite (tier voltado a consultoria financeira familiar).
 
 ### Limites enforcement
 - `SubscriptionService` verifica limites antes de criar contas, cartões, membros e lançamentos
@@ -340,6 +343,7 @@ POST   /api/v1/family-groups/{groupId}/shopping/lists/{id}/convert-to-purchase  
 | `MAIL_USERNAME` | Não | Usuário SMTP (Gmail: seu e-mail · Brevo: `xxxx@smtp-brevo.com`) |
 | `MAIL_PASSWORD` | Não | Senha SMTP (Gmail: App Password · Brevo: SMTP key) |
 | `MAIL_FROM` | Não* | Remetente. **Obrigatório no Brevo** (deve ser um sender verificado) |
+| `BREVO_API_KEY` | Não | Envia por **API HTTP do Brevo** (`xkeysib-…`). **Necessário no Render**, que bloqueia SMTP de saída (587 dá timeout). Sem ela, usa SMTP (dev local) |
 | `STRIPE_SECRET_KEY` | Não* | Chave secreta da API Stripe (Fase 3) |
 | `STRIPE_WEBHOOK_SECRET` | Não* | Secret de assinatura do webhook |
 | `STRIPE_PRICE_ESSENCIAL` | Não* | Price ID do plano Essencial |
@@ -391,6 +395,11 @@ As migrações V1–V12 rodam automaticamente via Flyway na inicialização. O `
 - [x] **Despesas recorrentes** — fixas (aluguel, energia, escola…), incl. recorrência quinzenal (BIWEEKLY)
 - [x] **Compras Inteligentes** — compras de supermercado (manual / NFC-e por link ou QR Code via Jsoup), itens, **histórico de preços**, listas de compras (checklist) e geração de **despesa única** com o valor total
 - [x] **Insights de compras** — básico para todos; análises avançadas/IA reservadas ao plano PREMIUM
+- [x] **Convite de membros completo** — envio de e-mail, reenvio, página de aceite (`/invite/accept`) que associa ao grupo após cadastro/login
+- [x] **Notificações da família** — avisa os demais membros quando alguém cria/paga lançamento, cria conta/cartão ou entra no grupo (sino com não lidas)
+- [x] **E-mail transacional via Brevo** (API HTTP — funciona no Render, que bloqueia SMTP)
+- [x] **Gestão de família** — admin renomeia a família; limite de famílias por plano
+- [x] Mensagens de erro do sistema em português
 - [x] Swagger UI documentado
 - [x] Dark/Light mode
 
