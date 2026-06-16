@@ -130,6 +130,25 @@ public class SubscriptionService {
         }
     }
 
+    /**
+     * Limite de famílias por usuário: FREE/Essencial = 1; Premium PAGO = ilimitado.
+     * O trial (status TRIAL) NÃO conta como Premium. Conta apenas famílias onde o
+     * usuário é ADMIN (dono/criador).
+     */
+    public void assertCanCreateFamily(User user) {
+        List<FamilyGroupMember> owned = memberRepository.findByUserIdAndRoleAndIsActiveTrue(user.getId(), MemberRole.ADMIN);
+        if (owned.isEmpty()) return; // primeira família, sempre permitida
+
+        boolean hasPaidPremium = owned.stream().anyMatch(m -> {
+            Subscription s = findOrDefault(m.getFamilyGroup().getId());
+            return s.getPlan() == PlanType.PREMIUM && s.getStatus() == SubscriptionStatus.ACTIVE;
+        });
+        if (!hasPaidPremium) {
+            throw new BusinessException(
+                "Seu plano permite apenas 1 família. Faça upgrade para o Premium em uma família para criar mais.");
+        }
+    }
+
     public void checkAdvancedReportsAccess(UUID familyGroupId) {
         PlanType plan = getEffectivePlan(familyGroupId);
         if (!plan.isAdvancedReports()) {

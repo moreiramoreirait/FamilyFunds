@@ -33,6 +33,8 @@ public class FamilyGroupService {
 
     @Transactional
     public FamilyGroupResponse create(FamilyGroupRequest request, User currentUser) {
+        subscriptionService.assertCanCreateFamily(currentUser);
+
         FamilyGroup group = FamilyGroup.builder()
                 .name(request.name())
                 .description(request.description())
