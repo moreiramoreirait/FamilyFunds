@@ -1,8 +1,11 @@
 package com.familyfinance.service;
 
+import com.familyfinance.dto.request.BulkInviteRequest;
 import com.familyfinance.dto.request.FamilyGroupRequest;
 import com.familyfinance.dto.request.InviteMemberRequest;
+import com.familyfinance.dto.response.BulkInviteResponse;
 import com.familyfinance.dto.response.FamilyGroupResponse;
+import com.familyfinance.dto.response.InviteResponse;
 import com.familyfinance.entity.*;
 import com.familyfinance.exception.BusinessException;
 import com.familyfinance.exception.ResourceNotFoundException;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -100,43 +104,138 @@ public class FamilyGroupService {
     @Transactional
     public void inviteMember(UUID groupId, InviteMemberRequest request, User currentUser) {
         assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
+        FamilyGroup group = familyGroupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("FamilyGroup", "id", groupId));
+        if (applyInvite(group, request.email(), request.role(), currentUser) == InviteOutcome.ALREADY_MEMBER) {
+            throw new BusinessException("Esta pessoa já é membro do grupo");
+        }
+    }
 
-        String email = request.email().toLowerCase();
-
-        // Já é membro do grupo?
-        userRepository.findByEmail(email).ifPresent(u -> {
-            if (memberRepository.existsByFamilyGroupIdAndUserIdAndIsActiveTrue(groupId, u.getId())) {
-                throw new BusinessException("Esta pessoa já é membro do grupo");
-            }
-        });
-
+    @Transactional
+    public BulkInviteResponse bulkInvite(UUID groupId, BulkInviteRequest request, User currentUser) {
+        assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
         FamilyGroup group = familyGroupRepository.findById(groupId)
                 .orElseThrow(() -> new ResourceNotFoundException("FamilyGroup", "id", groupId));
 
-        // Já existe convite pendente? Reenvia (renova token e validade) em vez de duplicar.
+        List<String> emails = request.emails().stream()
+                .filter(e -> e != null && !e.isBlank())
+                .map(e -> e.trim().toLowerCase())
+                .distinct().toList();
+
+        List<BulkInviteResponse.Item> results = new ArrayList<>();
+        int sent = 0, skipped = 0, failed = 0;
+        for (String email : emails) {
+            try {
+                InviteOutcome outcome = applyInvite(group, email, request.role(), currentUser);
+                switch (outcome) {
+                    case SENT -> { sent++; results.add(new BulkInviteResponse.Item(email, "SENT", "Convite enviado")); }
+                    case RESENT -> { sent++; results.add(new BulkInviteResponse.Item(email, "RESENT", "Convite reenviado")); }
+                    case ALREADY_MEMBER -> { skipped++; results.add(new BulkInviteResponse.Item(email, "ALREADY_MEMBER", "Já é membro")); }
+                }
+            } catch (Exception e) {
+                failed++;
+                results.add(new BulkInviteResponse.Item(email, "ERROR", e.getMessage()));
+            }
+        }
+        return new BulkInviteResponse(sent, skipped, failed, results);
+    }
+
+    private enum InviteOutcome { SENT, RESENT, ALREADY_MEMBER }
+
+    /** Cria ou reenvia (renova token/validade) um convite. Não lança se já for membro: retorna ALREADY_MEMBER. */
+    private InviteOutcome applyInvite(FamilyGroup group, String rawEmail, MemberRole role, User currentUser) {
+        String email = rawEmail.trim().toLowerCase();
+        var existingUser = userRepository.findByEmail(email);
+        if (existingUser.isPresent()
+                && memberRepository.existsByFamilyGroupIdAndUserIdAndIsActiveTrue(group.getId(), existingUser.get().getId())) {
+            return InviteOutcome.ALREADY_MEMBER;
+        }
         FamilyGroupInvite invite = inviteRepository
-                .findByEmailAndFamilyGroupIdAndStatus(email, groupId, InviteStatus.PENDING)
+                .findByEmailAndFamilyGroupIdAndStatus(email, group.getId(), InviteStatus.PENDING)
                 .orElse(null);
+        InviteOutcome outcome;
         if (invite != null) {
-            invite.setRole(request.role());
+            invite.setRole(role);
             invite.setInvitedBy(currentUser);
             invite.setToken(UUID.randomUUID().toString());
             invite.setExpiresAt(LocalDateTime.now().plusDays(7));
+            outcome = InviteOutcome.RESENT;
         } else {
-            subscriptionService.checkMemberLimit(groupId);
+            subscriptionService.checkMemberLimit(group.getId());
             invite = FamilyGroupInvite.builder()
                     .familyGroup(group)
                     .invitedBy(currentUser)
                     .email(email)
-                    .role(request.role())
+                    .role(role)
                     .token(UUID.randomUUID().toString())
                     .status(InviteStatus.PENDING)
                     .expiresAt(LocalDateTime.now().plusDays(7))
                     .build();
+            outcome = InviteOutcome.SENT;
         }
         inviteRepository.save(invite);
         emailService.sendInviteEmail(invite, group.getName());
-        log.info("Invite sent to {} for group {}", email, groupId);
+        log.info("Invite ({}) to {} for group {}", outcome, email, group.getId());
+        return outcome;
+    }
+
+    @Transactional(readOnly = true)
+    public List<InviteResponse> listPendingInvites(UUID groupId, User currentUser) {
+        assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
+        return inviteRepository.findByFamilyGroupIdAndStatus(groupId, InviteStatus.PENDING).stream()
+                .map(i -> new InviteResponse(
+                        i.getId(), i.getEmail(), i.getRole(), i.getStatus(),
+                        i.getInvitedBy() != null ? i.getInvitedBy().getName() : null,
+                        i.getExpiresAt(), i.getCreatedAt()))
+                .toList();
+    }
+
+    @Transactional
+    public void revokeInvite(UUID groupId, UUID inviteId, User currentUser) {
+        assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
+        FamilyGroupInvite invite = inviteRepository.findById(inviteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Convite não encontrado"));
+        if (!invite.getFamilyGroup().getId().equals(groupId)) {
+            throw new BusinessException("Convite não pertence a este grupo");
+        }
+        if (invite.getStatus() != InviteStatus.PENDING) {
+            throw new BusinessException("Só é possível revogar convites pendentes");
+        }
+        invite.setStatus(InviteStatus.REJECTED);
+        invite.setRespondedAt(LocalDateTime.now());
+        inviteRepository.save(invite);
+    }
+
+    @Transactional
+    public void changeMemberRole(UUID groupId, UUID targetUserId, MemberRole newRole, User currentUser) {
+        assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
+        FamilyGroupMember member = memberRepository.findByFamilyGroupIdAndUserId(groupId, targetUserId)
+                .filter(m -> Boolean.TRUE.equals(m.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Membro não encontrado neste grupo"));
+        if (member.getRole() == MemberRole.ADMIN && newRole != MemberRole.ADMIN && countActiveAdmins(groupId) <= 1) {
+            throw new BusinessException("Não é possível rebaixar o último administrador do grupo");
+        }
+        member.setRole(newRole);
+        memberRepository.save(member);
+    }
+
+    @Transactional
+    public void removeMember(UUID groupId, UUID targetUserId, User currentUser) {
+        assertRole(groupId, currentUser.getId(), MemberRole.ADMIN);
+        FamilyGroupMember member = memberRepository.findByFamilyGroupIdAndUserId(groupId, targetUserId)
+                .filter(m -> Boolean.TRUE.equals(m.getIsActive()))
+                .orElseThrow(() -> new ResourceNotFoundException("Membro não encontrado neste grupo"));
+        if (member.getRole() == MemberRole.ADMIN && countActiveAdmins(groupId) <= 1) {
+            throw new BusinessException("Não é possível remover o último administrador do grupo");
+        }
+        member.setIsActive(false);
+        memberRepository.save(member);
+    }
+
+    private long countActiveAdmins(UUID groupId) {
+        return memberRepository.findByFamilyGroupIdAndIsActiveTrue(groupId).stream()
+                .filter(m -> m.getRole() == MemberRole.ADMIN)
+                .count();
     }
 
     @Transactional

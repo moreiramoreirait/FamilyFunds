@@ -41,6 +41,25 @@ export interface FamilyGroup {
   createdAt: string
 }
 
+export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED'
+
+export interface FamilyInvite {
+  id: string
+  email: string
+  role: MemberRole
+  status: InviteStatus
+  invitedByName?: string
+  expiresAt?: string
+  createdAt: string
+}
+
+export interface BulkInviteResult {
+  sent: number
+  skipped: number
+  failed: number
+  results: { email: string; status: string; message: string }[]
+}
+
 // ============ ACCOUNT ============
 export type AccountType = 'CHECKING' | 'SAVINGS' | 'WALLET' | 'CASH' | 'INVESTMENT' | 'OTHER'
 

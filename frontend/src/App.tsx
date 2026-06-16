@@ -28,6 +28,7 @@ import CardsPage from '@/pages/cards/CardsPage'
 import BudgetPage from '@/pages/budget/BudgetPage'
 import ReportsPage from '@/pages/reports/ReportsPage'
 import FamilyPage from '@/pages/family/FamilyPage'
+import ManageFamilyPage from '@/pages/family/ManageFamilyPage'
 import SettingsPage from '@/pages/settings/SettingsPage'
 import ImportsPage from '@/pages/imports/ImportsPage'
 import PlansPage from '@/pages/plans/PlansPage'
@@ -86,6 +87,7 @@ export default function App() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/imports" element={<ImportsPage />} />
           <Route path="/family" element={<FamilyPage />} />
+          <Route path="/family/:id/gerenciar" element={<ManageFamilyPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/plans" element={<PlansPage />} />
           <Route path="/usage" element={<UsagePage />} />

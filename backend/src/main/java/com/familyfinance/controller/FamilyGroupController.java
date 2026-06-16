@@ -1,8 +1,12 @@
 package com.familyfinance.controller;
 
+import com.familyfinance.dto.request.BulkInviteRequest;
+import com.familyfinance.dto.request.ChangeRoleRequest;
 import com.familyfinance.dto.request.FamilyGroupRequest;
 import com.familyfinance.dto.request.InviteMemberRequest;
+import com.familyfinance.dto.response.BulkInviteResponse;
 import com.familyfinance.dto.response.FamilyGroupResponse;
+import com.familyfinance.dto.response.InviteResponse;
 import com.familyfinance.entity.User;
 import com.familyfinance.service.FamilyGroupService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -75,5 +79,53 @@ public class FamilyGroupController {
             @AuthenticationPrincipal User user) {
         familyGroupService.acceptInvite(token, user);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/invite/bulk")
+    @Operation(summary = "Convidar membros em massa (mesmo papel para todos)")
+    public ResponseEntity<BulkInviteResponse> bulkInvite(
+            @PathVariable UUID id,
+            @Valid @RequestBody BulkInviteRequest request,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(familyGroupService.bulkInvite(id, request, user));
+    }
+
+    @GetMapping("/{id}/invites")
+    @Operation(summary = "Listar convites pendentes")
+    public ResponseEntity<List<InviteResponse>> listInvites(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(familyGroupService.listPendingInvites(id, user));
+    }
+
+    @DeleteMapping("/{id}/invites/{inviteId}")
+    @Operation(summary = "Revogar convite pendente")
+    public ResponseEntity<Void> revokeInvite(
+            @PathVariable UUID id,
+            @PathVariable UUID inviteId,
+            @AuthenticationPrincipal User user) {
+        familyGroupService.revokeInvite(id, inviteId, user);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/members/{userId}/role")
+    @Operation(summary = "Alterar papel de um membro")
+    public ResponseEntity<Void> changeMemberRole(
+            @PathVariable UUID id,
+            @PathVariable UUID userId,
+            @Valid @RequestBody ChangeRoleRequest request,
+            @AuthenticationPrincipal User user) {
+        familyGroupService.changeMemberRole(id, userId, request.role(), user);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/members/{userId}")
+    @Operation(summary = "Remover membro do grupo")
+    public ResponseEntity<Void> removeMember(
+            @PathVariable UUID id,
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal User user) {
+        familyGroupService.removeMember(id, userId, user);
+        return ResponseEntity.noContent().build();
     }
 }
