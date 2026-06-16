@@ -40,7 +40,8 @@ export default function RegisterPage() {
       const response = await authApi.register({ name: data.name, email: data.email, password: data.password })
       setAuth(response.user, response.accessToken, response.refreshToken)
       toast({ title: 'Conta criada com sucesso!', description: 'Bem-vindo ao FinançasFamília' })
-      navigate('/family')
+      const pendingInvite = localStorage.getItem('pendingInviteToken')
+      navigate(pendingInvite ? '/invite/accept' : '/family')
     } catch (error: any) {
       const msg = error?.response?.data?.message || 'Erro ao criar conta'
       toast({ title: 'Erro no cadastro', description: msg, variant: 'destructive' })

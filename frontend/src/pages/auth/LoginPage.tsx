@@ -34,7 +34,8 @@ export default function LoginPage() {
     try {
       const response = await authApi.login(data)
       setAuth(response.user, response.accessToken, response.refreshToken)
-      navigate('/dashboard')
+      const pendingInvite = localStorage.getItem('pendingInviteToken')
+      navigate(pendingInvite ? '/invite/accept' : '/dashboard')
     } catch (error: any) {
       const msg = error?.response?.data?.message || 'E-mail ou senha inválidos'
       toast({ title: 'Erro no login', description: msg, variant: 'destructive' })

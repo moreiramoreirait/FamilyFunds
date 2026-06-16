@@ -13,6 +13,7 @@ import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
+import InviteAcceptPage from '@/pages/auth/InviteAcceptPage'
 
 // App Pages
 import DashboardPage from '@/pages/dashboard/DashboardPage'
@@ -90,6 +91,9 @@ export default function App() {
           <Route path="/usage" element={<UsagePage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Route>
+
+        {/* Aceitar convite — acessível logado ou não (captura o token e aceita após auth) */}
+        <Route path="/invite/accept" element={<InviteAcceptPage />} />
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
