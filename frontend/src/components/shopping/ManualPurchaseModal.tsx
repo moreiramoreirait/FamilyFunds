@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Plus, Trash2 } from 'lucide-react'
+import { RefreshCw, Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,7 +44,7 @@ export function ManualPurchaseModal({ open, onClose, groupId, purchase, prefillQ
     if (purchase) {
       setStoreName(purchase.storeName || '')
       setPurchaseDate(purchase.purchaseDate || new Date().toISOString().slice(0, 10))
-      setNotes(purchase.notes || '')
+      setNotes(purchase.notes || (purchase.qrCodeUrl ? `NFC-e: ${purchase.qrCodeUrl}` : ''))
       setRows(purchase.items.length
         ? purchase.items.map(i => ({
             productName: i.productName,
@@ -117,6 +117,17 @@ export function ManualPurchaseModal({ open, onClose, groupId, purchase, prefillQ
         </DialogHeader>
 
         <div className="space-y-4">
+          {purchase?.qrCodeUrl && (purchase.items.length === 0 || purchase.extractionStatus === 'FALHA_NA_IMPORTACAO' || purchase.extractionStatus === 'IMPORTADO_PARCIALMENTE') && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 p-3 flex gap-3 items-start">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-800 dark:text-amber-200">Não foi possível ler a nota automaticamente</p>
+                <p className="text-amber-700 dark:text-amber-300 mt-0.5">
+                  O portal da NFC-e bloqueou a leitura ou o formato não foi reconhecido. Confira o link nas observações e preencha o mercado e os itens manualmente.
+                </p>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5 sm:col-span-1">
               <Label htmlFor="storeName">Mercado *</Label>

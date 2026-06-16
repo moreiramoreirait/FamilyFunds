@@ -43,6 +43,7 @@ export default function ShoppingPage() {
   const [pasteOpen, setPasteOpen] = useState(false)
   const [qrOpen, setQrOpen] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [editPurchase, setEditPurchase] = useState<ShoppingPurchase | null>(null)
   const [listOpen, setListOpen] = useState(false)
   const [editList, setEditList] = useState<ShoppingList | null>(null)
 
@@ -200,9 +201,10 @@ export default function ShoppingPage() {
 
       {/* Modais */}
       {manualOpen && <ManualPurchaseModal open={manualOpen} onClose={() => setManualOpen(false)} groupId={groupId} />}
-      {pasteOpen && <PasteNfceLinkModal open={pasteOpen} onClose={() => setPasteOpen(false)} groupId={groupId} onImported={p => setDetailId(p.id)} />}
-      {qrOpen && <QrScanModal open={qrOpen} onClose={() => setQrOpen(false)} groupId={groupId} onImported={p => setDetailId(p.id)} />}
+      {pasteOpen && <PasteNfceLinkModal open={pasteOpen} onClose={() => setPasteOpen(false)} groupId={groupId} onImported={p => setEditPurchase(p)} />}
+      {qrOpen && <QrScanModal open={qrOpen} onClose={() => setQrOpen(false)} groupId={groupId} onImported={p => setEditPurchase(p)} />}
       {detailId && <PurchaseDetailModal open={!!detailId} onClose={() => setDetailId(null)} groupId={groupId} purchaseId={detailId} />}
+      {editPurchase && <ManualPurchaseModal open onClose={() => setEditPurchase(null)} groupId={groupId} purchase={editPurchase} />}
       {listOpen && <ShoppingListModal open={listOpen} onClose={() => { setListOpen(false); setEditList(null) }} groupId={groupId} list={editList} onConverted={id => setDetailId(id)} />}
     </div>
   )
