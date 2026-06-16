@@ -60,6 +60,17 @@ export interface BulkInviteResult {
   results: { email: string; status: string; message: string }[]
 }
 
+// ============ OPEN FINANCE ============
+export interface BankConnection {
+  id: string
+  connectorName?: string
+  connectorImageUrl?: string
+  status: string
+  statusDetail?: string
+  lastSyncedAt?: string
+  createdAt: string
+}
+
 // ============ ACCOUNT ============
 export type AccountType = 'CHECKING' | 'SAVINGS' | 'WALLET' | 'CASH' | 'INVESTMENT' | 'OTHER'
 

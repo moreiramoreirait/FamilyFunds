@@ -24,6 +24,7 @@ import TagsPage from '@/pages/tags/TagsPage'
 import SubscriptionsPage from '@/pages/subscriptions/SubscriptionsPage'
 import RecurringExpensesPage from '@/pages/recurring/RecurringExpensesPage'
 import ShoppingPage from '@/pages/shopping/ShoppingPage'
+import OpenFinancePage from '@/pages/openfinance/OpenFinancePage'
 import CardsPage from '@/pages/cards/CardsPage'
 import BudgetPage from '@/pages/budget/BudgetPage'
 import ReportsPage from '@/pages/reports/ReportsPage'
@@ -83,6 +84,7 @@ export default function App() {
           <Route path="/subscriptions" element={<SubscriptionsPage />} />
           <Route path="/recurring-expenses" element={<RecurringExpensesPage />} />
           <Route path="/shopping" element={<ShoppingPage />} />
+          <Route path="/open-finance" element={<OpenFinancePage />} />
           <Route path="/budget" element={<BudgetPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/imports" element={<ImportsPage />} />

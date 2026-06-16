@@ -158,6 +158,13 @@ public class SubscriptionService {
         }
     }
 
+    public void checkOpenFinanceAccess(UUID familyGroupId) {
+        if (getEffectivePlan(familyGroupId) != PlanType.PREMIUM) {
+            throw new BusinessException(
+                "Open Finance está disponível apenas no plano Premium. Faça upgrade para conectar seu banco.");
+        }
+    }
+
     public void checkAiAccess(UUID familyGroupId) {
         PlanType plan = getEffectivePlan(familyGroupId);
         if (!plan.isAiEnabled()) {

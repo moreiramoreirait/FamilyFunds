@@ -90,6 +90,11 @@ stripe:
   price-essencial: ${STRIPE_PRICE_ESSENCIAL:}
   price-premium: ${STRIPE_PRICE_PREMIUM:}
 
+pluggy:
+  client-id: ${PLUGGY_CLIENT_ID:}
+  client-secret: ${PLUGGY_CLIENT_SECRET:}
+  base-url: ${PLUGGY_BASE_URL:https://api.pluggy.ai}
+
 app:
   jwt:
     secret: ${JWT_SECRET:bXlWZXJ5TG9uZ1NlY3JldEtleUZvckpXVFRva2VuR2VuZXJhdGlvblRoYXRJc0F0TGVhc3QyNTZCaXRzTG9uZw==}
