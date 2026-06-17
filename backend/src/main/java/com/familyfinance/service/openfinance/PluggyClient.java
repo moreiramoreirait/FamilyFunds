@@ -146,7 +146,12 @@ public class PluggyClient {
         try {
             HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() >= 300) {
-                throw new BusinessException("Pluggy respondeu " + resp.statusCode());
+                String path = req.uri().getPath();
+                log.warn("Pluggy {} {} -> {} : {}", req.method(), path, resp.statusCode(), resp.body());
+                String body = resp.body() == null ? "" : resp.body();
+                String detail = body.length() > 240 ? body.substring(0, 240) : body;
+                throw new BusinessException("Pluggy " + path + " respondeu " + resp.statusCode()
+                        + (detail.isBlank() ? "" : " — " + detail));
             }
             return mapper.readTree(resp.body());
         } catch (BusinessException e) {
