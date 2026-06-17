@@ -3,6 +3,7 @@ package com.familyfinance.controller;
 import com.familyfinance.dto.request.SaveConnectionRequest;
 import com.familyfinance.dto.response.BankConnectionResponse;
 import com.familyfinance.dto.response.ConnectTokenResponse;
+import com.familyfinance.dto.response.SyncResultResponse;
 import com.familyfinance.entity.User;
 import com.familyfinance.service.openfinance.OpenFinanceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -55,5 +56,12 @@ public class OpenFinanceController {
             @PathVariable UUID groupId, @PathVariable UUID id, @AuthenticationPrincipal User user) {
         service.deleteConnection(groupId, id, user);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/connections/{id}/sync")
+    @Operation(summary = "Sincronizar contas e extrato da conexão")
+    public ResponseEntity<SyncResultResponse> sync(
+            @PathVariable UUID groupId, @PathVariable UUID id, @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.syncConnection(groupId, id, user));
     }
 }

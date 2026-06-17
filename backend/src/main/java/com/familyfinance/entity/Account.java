@@ -60,6 +60,13 @@ public class Account {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    // Open Finance: vínculo com a conta no agregador (Pluggy)
+    @Column(name = "bank_connection_id")
+    private UUID bankConnectionId;
+
+    @Column(name = "external_account_id", length = 100)
+    private String externalAccountId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by")
     private User createdBy;

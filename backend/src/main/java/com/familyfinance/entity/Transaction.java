@@ -124,6 +124,10 @@ public class Transaction {
     @Column(name = "origin_id")
     private UUID originId;
 
+    /** Id da transação no agregador de Open Finance (Pluggy) — usado para deduplicar na sincronização. */
+    @Column(name = "external_id", length = 100)
+    private String externalId;
+
     @Column(name = "recurrence_reference_date")
     private LocalDate recurrenceReferenceDate;
 

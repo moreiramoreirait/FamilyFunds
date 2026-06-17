@@ -58,6 +58,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     boolean existsByOriginTypeAndOriginIdAndRecurrenceReferenceDate(
             com.familyfinance.entity.OriginType originType, UUID originId, LocalDate recurrenceReferenceDate);
 
+    // Dedup de transações sincronizadas do Open Finance (Pluggy)
+    boolean existsByFamilyGroupIdAndExternalId(UUID familyGroupId, String externalId);
+
     List<Transaction> findByFamilyGroupIdAndTransactionDateBetweenAndStatus(
             UUID familyGroupId, LocalDate start, LocalDate end, TransactionStatus status);
 

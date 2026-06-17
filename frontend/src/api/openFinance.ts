@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { BankConnection } from '@/types'
+import type { BankConnection, SyncResult } from '@/types'
 
 const base = (groupId: string) => `/family-groups/${groupId}/open-finance`
 
@@ -15,4 +15,7 @@ export const openFinanceApi = {
 
   remove: (groupId: string, id: string) =>
     apiClient.delete(`${base(groupId)}/connections/${id}`),
+
+  sync: (groupId: string, id: string) =>
+    apiClient.post<SyncResult>(`${base(groupId)}/connections/${id}/sync`).then(r => r.data),
 }

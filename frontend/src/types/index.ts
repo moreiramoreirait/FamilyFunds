@@ -71,6 +71,12 @@ export interface BankConnection {
   createdAt: string
 }
 
+export interface SyncResult {
+  accountsLinked: number
+  transactionsImported: number
+  status: string
+}
+
 // ============ ACCOUNT ============
 export type AccountType = 'CHECKING' | 'SAVINGS' | 'WALLET' | 'CASH' | 'INVESTMENT' | 'OTHER'
 

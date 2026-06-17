@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { formatDate } from '@/lib/utils'
+import { formatDate, cn } from '@/lib/utils'
 
 // Widget Pluggy Connect — carregado sob demanda (lib browser-only, evita peso no bundle inicial)
 const PluggyConnect = lazy(() =>
@@ -64,6 +64,18 @@ export default function OpenFinancePage() {
     mutationFn: (id: string) => openFinanceApi.remove(groupId!, id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['bank-connections', groupId] }); toast({ title: 'Conexão removida' }) },
     onError: (e: any) => toast({ title: e?.response?.data?.message || 'Erro', variant: 'destructive' }),
+  })
+
+  const syncConn = useMutation({
+    mutationFn: (id: string) => openFinanceApi.sync(groupId!, id),
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ['bank-connections', groupId] })
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      toast({ title: 'Sincronizado!', description: `${r.transactionsImported} transação(ões) · ${r.accountsLinked} conta(s) nova(s)` })
+    },
+    onError: (e: any) => toast({ title: e?.response?.data?.message || 'Erro ao sincronizar', variant: 'destructive' }),
   })
 
   if (!groupId) {
@@ -134,6 +146,10 @@ export default function OpenFinancePage() {
                     {c.lastSyncedAt ? `Sincronizado ${formatDate(c.lastSyncedAt)}` : 'Ainda não sincronizado'}
                   </p>
                 </div>
+                <Button variant="outline" size="sm" className="gap-1.5" disabled={syncConn.isPending}
+                  onClick={() => syncConn.mutate(c.id)}>
+                  <RefreshCw className={cn('h-3.5 w-3.5', syncConn.isPending && 'animate-spin')} /> Sincronizar
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" title="Remover"
                   onClick={() => { if (confirm(`Remover a conexão com ${c.connectorName || 'este banco'}?`)) removeConn.mutate(c.id) }}>
                   <Trash2 className="h-4 w-4 text-destructive" />
