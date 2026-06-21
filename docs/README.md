@@ -133,7 +133,7 @@ npm run dev
 | Feature | FREE | ESSENCIAL | PREMIUM |
 |---------|------|-----------|---------|
 | Usuários (por família) | 2 | 5 | Ilimitado |
-| Famílias (por usuário) | 1 | 1 | Ilimitado* |
+| Famílias (por usuário) | 1 | 1 | até 5* |
 | Contas bancárias | 2 | 10 | Ilimitado |
 | Cartões de crédito | 1 | 5 | Ilimitado |
 | Lançamentos/mês | 50 | 500 | Ilimitado |
@@ -144,7 +144,7 @@ npm run dev
 
 **Trial:** todo novo grupo ganha automaticamente 14 dias do plano PREMIUM.
 
-**Limite de famílias:** a assinatura é **por família**. O usuário cria 1 família no FREE/Essencial; ter alguma família em **Premium pago** (não trial) libera criar famílias adicionais (`SubscriptionService.assertCanCreateFamily`). \*O "ilimitado" do Premium está **em avaliação** — pode passar a ter cobrança adicional acima de um limite (tier voltado a consultoria financeira familiar).
+**Limite de famílias:** a assinatura é **por família**. O usuário cria 1 família no FREE/Essencial; ter alguma família em **Premium pago** (não trial) libera criar até **5 famílias** (`SubscriptionService.assertCanCreateFamily`, ajustável via `PREMIUM_MAX_FAMILIES`). \*Acima de 5 está reservado para um futuro **plano Business** (consultoria), com cobrança por família adicional. Famílias onde o usuário é apenas membro (convidado) **não contam** no limite.
 
 ### Limites enforcement
 - `SubscriptionService` verifica limites antes de criar contas, cartões, membros e lançamentos

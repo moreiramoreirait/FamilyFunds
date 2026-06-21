@@ -7,6 +7,7 @@ import com.familyfinance.entity.*;
 import com.familyfinance.exception.BusinessException;
 import com.familyfinance.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,10 @@ public class SubscriptionService {
     private final TransactionRepository transactionRepository;
     private final BankImportRepository bankImportRepository;
     private final EmailService emailService;
+
+    /** Teto de famílias que um usuário pode administrar no Premium pago (ajustável por env). */
+    @Value("${app.limits.premium-max-families:5}")
+    private int premiumMaxFamilies;
 
     @Transactional
     public Subscription createTrialSubscription(FamilyGroup group) {
@@ -137,7 +142,8 @@ public class SubscriptionService {
      */
     public void assertCanCreateFamily(User user) {
         List<FamilyGroupMember> owned = memberRepository.findByUserIdAndRoleAndIsActiveTrue(user.getId(), MemberRole.ADMIN);
-        if (owned.isEmpty()) return; // primeira família, sempre permitida
+        int count = owned.size();
+        if (count == 0) return; // primeira família, sempre permitida
 
         boolean hasPaidPremium = owned.stream().anyMatch(m -> {
             Subscription s = findOrDefault(m.getFamilyGroup().getId());
@@ -145,7 +151,12 @@ public class SubscriptionService {
         });
         if (!hasPaidPremium) {
             throw new BusinessException(
-                "Seu plano permite apenas 1 família. Faça upgrade para o Premium em uma família para criar mais.");
+                "Seu plano permite apenas 1 família. Faça upgrade para o Premium para criar mais.");
+        }
+        if (count >= premiumMaxFamilies) {
+            throw new BusinessException(String.format(
+                "Seu plano Premium permite até %d famílias. Para administrar mais, em breve teremos o plano Business (consultoria).",
+                premiumMaxFamilies));
         }
     }
 
