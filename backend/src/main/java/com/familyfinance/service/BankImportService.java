@@ -208,33 +208,49 @@ public class BankImportService {
      * Tries to auto-detect column positions by examining the header.
      */
     private List<ParsedRow> parseCsv(MultipartFile file) throws IOException {
-        List<ParsedRow> rows = new ArrayList<>();
+        // Detecta encoding: tenta UTF-8; se houver caractere inválido (extratos de banco
+        // costumam ser ISO-8859-1/Windows-1252), relê como Latin-1.
+        byte[] bytes = file.getBytes();
+        boolean invalidUtf8 = new String(bytes, StandardCharsets.UTF_8).chars().anyMatch(ch -> ch == 0xFFFD);
+        java.nio.charset.Charset cs = invalidUtf8 ? StandardCharsets.ISO_8859_1 : StandardCharsets.UTF_8;
+
+        List<String[]> lines = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
-
-            String headerLine = null;
+                new InputStreamReader(new ByteArrayInputStream(bytes), cs))) {
             String line;
-            int[] colMap = null; // [dateIdx, descIdx, amountIdx, debitIdx, creditIdx]
-
             while ((line = reader.readLine()) != null) {
                 String trimmed = line.trim();
                 if (trimmed.isEmpty()) continue;
+                lines.add(splitCsvLine(trimmed));
+            }
+        }
+        return parseRows(lines);
+    }
 
-                String[] parts = splitCsvLine(trimmed);
+    /**
+     * Converte linhas (já divididas em colunas) em ParsedRow. Procura o cabeçalho em
+     * QUALQUER linha (extratos têm preâmbulo antes do cabeçalho) e só usa colunas padrão
+     * [0,1,2] se nenhum cabeçalho for reconhecido.
+     */
+    private List<ParsedRow> parseRows(List<String[]> lines) {
+        int[] colMap = null; // [dateIdx, descIdx, amountIdx, debitIdx, creditIdx]
+        int headerIdx = -1;
+        for (int i = 0; i < lines.size(); i++) {
+            int[] c = detectCsvColumns(lines.get(i));
+            if (c != null) { colMap = c; headerIdx = i; break; }
+        }
 
-                if (colMap == null) {
-                    // Try to detect header
-                    colMap = detectCsvColumns(parts);
-                    if (colMap != null) {
-                        headerLine = trimmed;
-                        continue; // skip header row
-                    }
-                    // No header detected — try to parse as data with defaults [0,1,2]
-                    colMap = new int[]{0, 1, 2, -1, -1};
-                }
-
-                ParsedRow row = parseCsvRow(parts, colMap, trimmed);
-                if (row != null) rows.add(row);
+        List<ParsedRow> rows = new ArrayList<>();
+        if (colMap != null) {
+            for (int i = headerIdx + 1; i < lines.size(); i++) {
+                ParsedRow r = parseCsvRow(lines.get(i), colMap, String.join(";", lines.get(i)));
+                if (r != null) rows.add(r);
+            }
+        } else {
+            int[] def = {0, 1, 2, -1, -1};
+            for (String[] parts : lines) {
+                ParsedRow r = parseCsvRow(parts, def, String.join(";", parts));
+                if (r != null) rows.add(r);
             }
         }
         return rows;
@@ -267,8 +283,9 @@ public class BankImportService {
     private int[] detectCsvColumns(String[] parts) {
         int dateIdx = -1, descIdx = -1, amountIdx = -1, debitIdx = -1, creditIdx = -1;
         for (int i = 0; i < parts.length; i++) {
-            String h = parts[i].toLowerCase().trim()
-                    .replaceAll("[^a-záéíóúâêîôûãõüçèàì]", "");
+            String h = java.text.Normalizer.normalize(parts[i].toLowerCase().trim(), java.text.Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}", "")       // remove acentos (crédito -> credito)
+                    .replaceAll("[^a-z]", "");
             if (h.contains("data") || h.equals("date")) {
                 dateIdx = i;
             } else if (h.contains("descr") || h.contains("histor") || h.contains("memo")
@@ -308,6 +325,7 @@ public class BankImportService {
                 return null;
             }
 
+            if (amount.signum() == 0) return null; // ignora linhas de saldo/controle (valor zero)
             return new ParsedRow(desc, amount, date, raw);
         } catch (Exception e) {
             log.debug("Skipping CSV row: {}", raw, e);
@@ -364,28 +382,17 @@ public class BankImportService {
     private List<ParsedRow> parseXlsx(MultipartFile file) throws IOException {
         List<ParsedRow> rows = new ArrayList<>();
 
+        List<String[]> lines = new ArrayList<>();
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
-            Iterator<Row> rowIt = sheet.iterator();
-            int[] colMap = null;
             DataFormatter formatter = new DataFormatter();
-
-            while (rowIt.hasNext()) {
-                Row row = rowIt.next();
+            for (Row row : sheet) {
                 String[] parts = rowToStrings(row, formatter);
                 if (parts.length == 0) continue;
-
-                if (colMap == null) {
-                    colMap = detectCsvColumns(parts);
-                    if (colMap != null) continue; // skip header
-                    colMap = new int[]{0, 1, 2, -1, -1};
-                }
-
-                ParsedRow parsed = parseCsvRow(parts, colMap,
-                        String.join(";", parts));
-                if (parsed != null) rows.add(parsed);
+                lines.add(parts);
             }
         }
+        rows.addAll(parseRows(lines));
         return rows;
     }
 
