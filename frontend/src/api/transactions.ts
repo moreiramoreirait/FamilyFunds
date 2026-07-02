@@ -58,4 +58,7 @@ export const transactionsApi = {
 
   delete: (groupId: string, id: string) =>
     apiClient.delete(`/family-groups/${groupId}/transactions/${id}`),
+
+  categorize: (groupId: string, id: string, data: { categoryId: string; scope: 'SINGLE' | 'ALL_MATCHING' | 'THIS_AND_FUTURE'; keyword?: string }) =>
+    apiClient.post<{ affected: number; ruleCreated: boolean }>(`/family-groups/${groupId}/transactions/${id}/categorize`, data).then(r => r.data),
 }

@@ -35,6 +35,7 @@ public class TransactionService {
     private final AccountService accountService;
     private final SubscriptionService subscriptionService;
     private final NotificationService notificationService;
+    private final CategorizationService categorizationService;
 
     public Page<TransactionResponse> getAll(UUID familyGroupId, int page, int size) {
         return getAll(familyGroupId, page, size, null, null, null, null, null, null, null);
@@ -70,6 +71,11 @@ public class TransactionService {
         group.setId(familyGroupId);
 
         Transaction t = buildTransaction(request, group, currentUser);
+        // Regra de categorização automática (se o usuário não escolheu categoria)
+        if (t.getCategory() == null) {
+            Category auto = categorizationService.resolveCategory(familyGroupId, t.getDescription());
+            if (auto != null) t.setCategory(auto);
+        }
         t = transactionRepository.save(t);
 
         // Update account balance if paid

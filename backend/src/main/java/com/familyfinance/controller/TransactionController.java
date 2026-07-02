@@ -1,11 +1,14 @@
 package com.familyfinance.controller;
 
+import com.familyfinance.dto.request.CategorizeRequest;
 import com.familyfinance.dto.request.TransactionRequest;
+import com.familyfinance.dto.response.CategorizeResultResponse;
 import com.familyfinance.dto.response.TransactionResponse;
 import com.familyfinance.entity.MemberRole;
 import com.familyfinance.entity.TransactionStatus;
 import com.familyfinance.entity.TransactionType;
 import com.familyfinance.entity.User;
+import com.familyfinance.service.CategorizationService;
 import com.familyfinance.service.FamilyGroupService;
 import com.familyfinance.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,6 +36,18 @@ public class TransactionController {
 
     private final TransactionService transactionService;
     private final FamilyGroupService familyGroupService;
+    private final CategorizationService categorizationService;
+
+    @PostMapping("/{transactionId}/categorize")
+    @Operation(summary = "Categorizar (escopo: só este / todos com a palavra / este e futuros)")
+    public ResponseEntity<CategorizeResultResponse> categorize(
+            @PathVariable UUID groupId,
+            @PathVariable UUID transactionId,
+            @Valid @RequestBody CategorizeRequest req,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(categorizationService.categorize(
+                groupId, transactionId, req.categoryId(), req.scope(), req.keyword(), user));
+    }
 
     @GetMapping
     @Operation(summary = "List transactions with pagination and optional filters")

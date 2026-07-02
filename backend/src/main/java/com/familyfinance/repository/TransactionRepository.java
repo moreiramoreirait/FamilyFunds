@@ -61,6 +61,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     // Dedup de transações sincronizadas do Open Finance (Pluggy)
     boolean existsByFamilyGroupIdAndExternalId(UUID familyGroupId, String externalId);
 
+    // Categorização em massa: lançamentos cuja descrição contém a palavra-chave
+    List<Transaction> findByFamilyGroupIdAndDescriptionContainingIgnoreCase(UUID familyGroupId, String keyword);
+
     List<Transaction> findByFamilyGroupIdAndTransactionDateBetweenAndStatus(
             UUID familyGroupId, LocalDate start, LocalDate end, TransactionStatus status);
 

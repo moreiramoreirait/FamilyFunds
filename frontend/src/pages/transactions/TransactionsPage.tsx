@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, X, TrendingUp, TrendingDown, ArrowUpDown, CheckCircle2, Pencil } from 'lucide-react'
+import { Plus, Search, X, TrendingUp, TrendingDown, ArrowUpDown, CheckCircle2, Pencil, Tag } from 'lucide-react'
 import { transactionsApi, type TransactionFilters } from '@/api/transactions'
 import { accountsApi } from '@/api/accounts'
 import { categoriesApi } from '@/api/categories'
@@ -16,6 +16,7 @@ import { formatCurrency, formatDate, getStatusLabel, cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { TransactionModal } from '@/components/transactions/TransactionModal'
+import { CategorizeDialog } from '@/components/transactions/CategorizeDialog'
 
 const ALL = '__all__'
 
@@ -36,6 +37,7 @@ export default function TransactionsPage() {
   const [filters, setFilters] = useState<TransactionFilters>({})
   const [modalOpen, setModalOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
+  const [categorizeTx, setCategorizeTx] = useState<Transaction | null>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
@@ -217,6 +219,7 @@ export default function TransactionsPage() {
                   onMarkPaid={() => markPaidMutation.mutate({ id: tx.id })}
                   onDelete={() => deleteMutation.mutate(tx.id)}
                   onEdit={() => setEditTx(tx)}
+                  onCategorize={() => setCategorizeTx(tx)}
                 />
               ))}
             </div>
@@ -243,11 +246,14 @@ export default function TransactionsPage() {
         onClose={() => { setModalOpen(false); setEditTx(null) }}
         transaction={editTx}
       />
+      {categorizeTx && activeGroupId && (
+        <CategorizeDialog open onClose={() => setCategorizeTx(null)} groupId={activeGroupId} transaction={categorizeTx} />
+      )}
     </div>
   )
 }
 
-function TransactionRow({ tx, onMarkPaid, onDelete, onEdit }: { tx: Transaction; onMarkPaid: () => void; onDelete: () => void; onEdit: () => void }) {
+function TransactionRow({ tx, onMarkPaid, onDelete, onEdit, onCategorize }: { tx: Transaction; onMarkPaid: () => void; onDelete: () => void; onEdit: () => void; onCategorize: () => void }) {
   const isIncome = tx.type === 'INCOME'
   const isTransfer = tx.type === 'TRANSFER'
 
@@ -322,6 +328,9 @@ function TransactionRow({ tx, onMarkPaid, onDelete, onEdit }: { tx: Transaction;
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             </Button>
           )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Categorizar" onClick={onCategorize}>
+            <Tag className="h-4 w-4 text-muted-foreground" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={onEdit}>
             <Pencil className="h-4 w-4 text-muted-foreground" />
           </Button>

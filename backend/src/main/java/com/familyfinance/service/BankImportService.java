@@ -47,6 +47,7 @@ public class BankImportService {
     private final UserRepository          userRepository;
     private final SubscriptionService     subscriptionService;
     private final AccountService          accountService;
+    private final CategorizationService   categorizationService;
 
     // ─── list ────────────────────────────────────────────────────────────────
 
@@ -158,6 +159,12 @@ public class BankImportService {
             if (item.getStatus() != ImportItemStatus.PENDING) continue;
 
             if (itemIds == null || itemIds.contains(item.getId())) {
+                // Categoria: do item, ou por regra automática (palavra-chave)
+                Category category = item.getCategory();
+                if (category == null) {
+                    category = categorizationService.resolveCategory(
+                            bankImport.getFamilyGroup().getId(), item.getDescription());
+                }
                 // Create transaction
                 Transaction tx = Transaction.builder()
                         .familyGroup(bankImport.getFamilyGroup())
@@ -168,7 +175,7 @@ public class BankImportService {
                         .transactionDate(item.getTransactionDate())
                         .paidDate(item.getTransactionDate())
                         .status(TransactionStatus.PAID)
-                        .category(item.getCategory())
+                        .category(category)
                         .createdBy(bankImport.getImportedBy())
                         .build();
                 tx = transactionRepository.save(tx);
