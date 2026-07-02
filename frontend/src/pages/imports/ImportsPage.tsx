@@ -4,7 +4,7 @@ import {
   Upload, FileText, CheckCircle2, XCircle, Clock, Trash2,
   ChevronRight, TrendingUp, TrendingDown, AlertCircle, RefreshCw,
 } from 'lucide-react'
-import { importsApi, type BankImport, type BankImportItem } from '@/api/imports'
+import { importsApi, type BankImport, type BankImportItem, type ImportPreview, type ColumnMap } from '@/api/imports'
 import { accountsApi } from '@/api/accounts'
 import { useAuthStore } from '@/store/authStore'
 import { familyGroupsApi } from '@/api/familyGroups'
@@ -215,13 +215,43 @@ function UploadDialog({ groupId, onClose }: UploadDialogProps) {
   const [accountId, setAccountId] = useState('')
   const [dragging, setDragging] = useState(false)
 
+  // Mapeamento manual de colunas
+  const [preview, setPreview] = useState<ImportPreview | null>(null)
+  const [dateCol, setDateCol] = useState<number | null>(null)
+  const [descCol, setDescCol] = useState<number | null>(null)
+  const [amtMode, setAmtMode] = useState<'single' | 'split'>('single')
+  const [amountCol, setAmountCol] = useState<number | null>(null)
+  const [creditCol, setCreditCol] = useState<number | null>(null)
+  const [debitCol, setDebitCol] = useState<number | null>(null)
+
   const { data: accounts = [] } = useQuery({
     queryKey: ['accounts', groupId],
     queryFn: () => accountsApi.list(groupId),
   })
 
+  const previewMutation = useMutation({
+    mutationFn: () => importsApi.preview(groupId, file!),
+    onSuccess: (p) => {
+      setPreview(p)
+      setDateCol(p.detectedDate ?? null)
+      setDescCol(p.detectedDescription ?? null)
+      if (p.detectedAmount != null) { setAmtMode('single'); setAmountCol(p.detectedAmount) }
+      else if (p.detectedCredit != null && p.detectedDebit != null) {
+        setAmtMode('split'); setCreditCol(p.detectedCredit); setDebitCol(p.detectedDebit)
+      }
+    },
+    onError: () => toast({ title: 'Não foi possível ler as colunas do arquivo', variant: 'destructive' }),
+  })
+
+  const buildMap = (): ColumnMap | undefined => {
+    if (!preview || dateCol == null || descCol == null) return undefined
+    if (amtMode === 'single' && amountCol != null) return { dateCol, descCol, amountCol }
+    if (amtMode === 'split' && creditCol != null && debitCol != null) return { dateCol, descCol, creditCol, debitCol }
+    return undefined
+  }
+
   const uploadMutation = useMutation({
-    mutationFn: () => importsApi.upload(groupId, accountId, file!),
+    mutationFn: () => importsApi.upload(groupId, accountId, file!, buildMap()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['imports'] })
       toast({ title: 'Arquivo processado com sucesso!' })
@@ -229,6 +259,20 @@ function UploadDialog({ groupId, onClose }: UploadDialogProps) {
     },
     onError: () => toast({ title: 'Erro ao processar arquivo', variant: 'destructive' }),
   })
+
+  const nCols = preview ? Math.max(0, ...preview.rows.map(r => r.length)) : 0
+  const colLabel = (i: number) => {
+    const sample = preview?.rows.find(r => r[i]?.trim())?.[i] ?? ''
+    return `Col ${i}${sample ? ` — ${sample.slice(0, 18)}` : ''}`
+  }
+  const ColSelect = ({ value, onChange }: { value: number | null; onChange: (v: number) => void }) => (
+    <Select value={value != null ? String(value) : ''} onValueChange={v => onChange(Number(v))}>
+      <SelectTrigger className="h-8"><SelectValue placeholder="Selecionar…" /></SelectTrigger>
+      <SelectContent>
+        {Array.from({ length: nCols }).map((_, i) => <SelectItem key={i} value={String(i)}>{colLabel(i)}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  )
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
@@ -241,7 +285,7 @@ function UploadDialog({ groupId, onClose }: UploadDialogProps) {
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={cn('sm:max-w-md max-h-[90vh] overflow-y-auto', preview && 'sm:max-w-2xl')}>
         <DialogHeader>
           <DialogTitle>Importar Extrato</DialogTitle>
         </DialogHeader>
@@ -306,6 +350,60 @@ function UploadDialog({ groupId, onClose }: UploadDialogProps) {
             <p>• <strong>OFX / QFX</strong> — extrato padrão de todos os bancos</p>
             <p>• <strong>XLSX</strong> — planilha Excel com cabeçalho</p>
           </div>
+
+          {/* Mapeamento manual de colunas (avançado) */}
+          {file && !preview && (
+            <Button variant="outline" size="sm" className="w-full gap-2"
+              disabled={previewMutation.isPending} onClick={() => previewMutation.mutate()}>
+              {previewMutation.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
+              Mapear colunas manualmente (avançado)
+            </Button>
+          )}
+
+          {preview && (
+            <div className="space-y-3 border border-border rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Mapeamento de colunas</p>
+                <button className="text-xs text-muted-foreground hover:underline" onClick={() => setPreview(null)}>usar detecção automática</button>
+              </div>
+
+              {/* Prévia das primeiras linhas */}
+              <div className="overflow-x-auto rounded border border-border">
+                <table className="text-xs w-full">
+                  <tbody>
+                    {preview.rows.slice(0, 5).map((r, ri) => (
+                      <tr key={ri} className={cn('border-b border-border last:border-0', ri === 0 && 'bg-muted/50 font-medium')}>
+                        {Array.from({ length: nCols }).map((_, ci) => (
+                          <td key={ci} className="px-2 py-1 whitespace-nowrap max-w-[120px] truncate">{r[ci] ?? ''}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1"><label className="text-xs">Data</label><ColSelect value={dateCol} onChange={setDateCol} /></div>
+                <div className="space-y-1"><label className="text-xs">Descrição</label><ColSelect value={descCol} onChange={setDescCol} /></div>
+              </div>
+
+              <div className="flex gap-2 text-xs">
+                <button className={cn('px-2 py-1 rounded border', amtMode === 'single' ? 'border-primary bg-primary/10' : 'border-border')}
+                  onClick={() => setAmtMode('single')}>Valor único (com sinal)</button>
+                <button className={cn('px-2 py-1 rounded border', amtMode === 'split' ? 'border-primary bg-primary/10' : 'border-border')}
+                  onClick={() => setAmtMode('split')}>Crédito + Débito</button>
+              </div>
+
+              {amtMode === 'single' ? (
+                <div className="space-y-1"><label className="text-xs">Valor</label><ColSelect value={amountCol} onChange={setAmountCol} /></div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><label className="text-xs">Crédito (receita)</label><ColSelect value={creditCol} onChange={setCreditCol} /></div>
+                  <div className="space-y-1"><label className="text-xs">Débito (despesa)</label><ColSelect value={debitCol} onChange={setDebitCol} /></div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <DialogFooter>

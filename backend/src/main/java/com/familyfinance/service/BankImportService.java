@@ -1,6 +1,7 @@
 package com.familyfinance.service;
 
 import com.familyfinance.dto.BankImportItemResponse;
+import com.familyfinance.dto.BankImportPreviewResponse;
 import com.familyfinance.dto.BankImportResponse;
 import com.familyfinance.entity.*;
 import com.familyfinance.repository.*;
@@ -67,6 +68,12 @@ public class BankImportService {
     @Transactional
     public BankImportResponse uploadAndParse(UUID groupId, UUID accountId,
                                              MultipartFile file, String userEmail) {
+        return uploadAndParse(groupId, accountId, file, userEmail, null);
+    }
+
+    @Transactional
+    public BankImportResponse uploadAndParse(UUID groupId, UUID accountId,
+                                             MultipartFile file, String userEmail, int[] manualMap) {
         subscriptionService.checkImportLimit(groupId);
         FamilyGroup group = familyGroupRepository.findById(groupId)
                 .orElseThrow(() -> new NoSuchElementException("Group not found"));
@@ -93,11 +100,13 @@ public class BankImportService {
 
         List<ParsedRow> rows;
         try {
-            rows = switch (fileType) {
-                case CSV  -> parseCsv(file);
-                case OFX  -> parseOfx(file);
-                case XLSX -> parseXlsx(file);
-            };
+            rows = (manualMap != null && fileType != FileType.OFX)
+                    ? parseWithMap(file, fileType, manualMap)
+                    : switch (fileType) {
+                        case CSV  -> parseCsv(file);
+                        case OFX  -> parseOfx(file);
+                        case XLSX -> parseXlsx(file);
+                    };
         } catch (Exception e) {
             log.error("Parse error for import {}", bankImport.getId(), e);
             bankImport.setStatus(ImportStatus.FAILED);
@@ -207,7 +216,7 @@ public class BankImportService {
      * CSV parser — handles common Brazilian bank export formats.
      * Tries to auto-detect column positions by examining the header.
      */
-    private List<ParsedRow> parseCsv(MultipartFile file) throws IOException {
+    private List<String[]> readCsvLines(MultipartFile file) throws IOException {
         // Detecta encoding: tenta UTF-8; se houver caractere inválido (extratos de banco
         // costumam ser ISO-8859-1/Windows-1252), relê como Latin-1.
         byte[] bytes = file.getBytes();
@@ -224,7 +233,11 @@ public class BankImportService {
                 lines.add(splitCsvLine(trimmed));
             }
         }
-        return parseRows(lines);
+        return lines;
+    }
+
+    private List<ParsedRow> parseCsv(MultipartFile file) throws IOException {
+        return parseRows(readCsvLines(file));
     }
 
     /**
@@ -393,6 +406,11 @@ public class BankImportService {
     private List<ParsedRow> parseXlsx(MultipartFile file) throws IOException {
         List<ParsedRow> rows = new ArrayList<>();
 
+        rows.addAll(parseRows(readXlsxLines(file)));
+        return rows;
+    }
+
+    private List<String[]> readXlsxLines(MultipartFile file) throws IOException {
         List<String[]> lines = new ArrayList<>();
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -403,7 +421,42 @@ public class BankImportService {
                 lines.add(parts);
             }
         }
-        rows.addAll(parseRows(lines));
+        return lines;
+    }
+
+    /** Linhas cruas do arquivo (CSV/XLSX) para preview/mapeamento manual. */
+    private List<String[]> readLines(MultipartFile file, FileType type) throws IOException {
+        return switch (type) {
+            case CSV -> readCsvLines(file);
+            case XLSX -> readXlsxLines(file);
+            default -> List.of();
+        };
+    }
+
+    /** Prévia das primeiras linhas + mapeamento detectado (para mapeamento manual). */
+    public BankImportPreviewResponse preview(MultipartFile file) throws IOException {
+        FileType type = detectFileType(file.getOriginalFilename() != null ? file.getOriginalFilename() : "f.csv");
+        List<String[]> lines = readLines(file, type);
+        int[] det = null;
+        for (String[] l : lines) {
+            int[] c = detectCsvColumns(l);
+            if (c != null) { det = c; break; }
+        }
+        List<List<String>> rows = lines.stream().limit(15).map(Arrays::asList).toList();
+        return new BankImportPreviewResponse(rows, idx(det, 0), idx(det, 1), idx(det, 2), idx(det, 4), idx(det, 3));
+    }
+
+    private Integer idx(int[] a, int i) {
+        return (a == null || a[i] < 0) ? null : a[i];
+    }
+
+    /** Parseia todas as linhas usando um mapa de colunas fornecido manualmente. */
+    private List<ParsedRow> parseWithMap(MultipartFile file, FileType type, int[] colMap) throws IOException {
+        List<ParsedRow> rows = new ArrayList<>();
+        for (String[] l : readLines(file, type)) {
+            ParsedRow r = parseCsvRow(l, colMap, String.join(";", l));
+            if (r != null) rows.add(r);
+        }
         return rows;
     }
 

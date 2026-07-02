@@ -41,6 +41,23 @@ export interface PageResponse<T> {
   number: number
 }
 
+export interface ImportPreview {
+  rows: string[][]
+  detectedDate?: number | null
+  detectedDescription?: number | null
+  detectedAmount?: number | null
+  detectedCredit?: number | null
+  detectedDebit?: number | null
+}
+
+export interface ColumnMap {
+  dateCol: number
+  descCol: number
+  amountCol?: number
+  creditCol?: number
+  debitCol?: number
+}
+
 export const importsApi = {
   list: (groupId: string, page = 0, size = 20) =>
     apiClient
@@ -54,10 +71,27 @@ export const importsApi = {
       .get<BankImport>(`/family-groups/${groupId}/imports/${importId}`)
       .then(r => r.data),
 
-  upload: (groupId: string, accountId: string, file: File) => {
+  preview: (groupId: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return apiClient
+      .post<ImportPreview>(`/family-groups/${groupId}/imports/preview`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then(r => r.data)
+  },
+
+  upload: (groupId: string, accountId: string, file: File, map?: ColumnMap) => {
     const form = new FormData()
     form.append('file', file)
     form.append('accountId', accountId)
+    if (map) {
+      form.append('dateCol', String(map.dateCol))
+      form.append('descCol', String(map.descCol))
+      if (map.amountCol != null) form.append('amountCol', String(map.amountCol))
+      if (map.creditCol != null) form.append('creditCol', String(map.creditCol))
+      if (map.debitCol != null) form.append('debitCol', String(map.debitCol))
+    }
     return apiClient
       .post<BankImport>(`/family-groups/${groupId}/imports/upload`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },

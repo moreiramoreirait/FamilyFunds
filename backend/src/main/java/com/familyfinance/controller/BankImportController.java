@@ -1,5 +1,6 @@
 package com.familyfinance.controller;
 
+import com.familyfinance.dto.BankImportPreviewResponse;
 import com.familyfinance.dto.BankImportResponse;
 import com.familyfinance.dto.ConfirmImportRequest;
 import com.familyfinance.service.BankImportService;
@@ -46,16 +47,40 @@ public class BankImportController {
         return ResponseEntity.ok(bankImportService.getImport(groupId, importId));
     }
 
+    @PostMapping(value = "/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Preview file columns for manual mapping")
+    public ResponseEntity<BankImportPreviewResponse> preview(
+            @PathVariable UUID groupId,
+            @RequestParam("file") MultipartFile file
+    ) throws java.io.IOException {
+        return ResponseEntity.ok(bankImportService.preview(file));
+    }
+
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload and parse a bank statement file")
     public ResponseEntity<BankImportResponse> upload(
             @PathVariable UUID groupId,
             @RequestParam UUID accountId,
             @RequestParam("file") MultipartFile file,
+            @RequestParam(required = false) Integer dateCol,
+            @RequestParam(required = false) Integer descCol,
+            @RequestParam(required = false) Integer amountCol,
+            @RequestParam(required = false) Integer creditCol,
+            @RequestParam(required = false) Integer debitCol,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
+        int[] manualMap = null;
+        if (dateCol != null && descCol != null && (amountCol != null || (creditCol != null && debitCol != null))) {
+            // ordem interna: [date, desc, amount, debit, credit]
+            manualMap = new int[]{
+                    dateCol, descCol,
+                    amountCol != null ? amountCol : -1,
+                    debitCol != null ? debitCol : -1,
+                    creditCol != null ? creditCol : -1
+            };
+        }
         return ResponseEntity.ok(
-                bankImportService.uploadAndParse(groupId, accountId, file, userDetails.getUsername()));
+                bankImportService.uploadAndParse(groupId, accountId, file, userDetails.getUsername(), manualMap));
     }
 
     @PostMapping("/{importId}/confirm")
