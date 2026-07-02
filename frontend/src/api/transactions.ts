@@ -33,6 +33,7 @@ export interface TransactionFilters {
   tagId?: string
   startDate?: string
   endDate?: string
+  search?: string
 }
 
 export const transactionsApi = {

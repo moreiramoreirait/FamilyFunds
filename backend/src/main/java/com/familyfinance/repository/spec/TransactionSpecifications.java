@@ -58,4 +58,11 @@ public final class TransactionSpecifications {
         return end == null ? null
                 : (root, query, cb) -> cb.lessThanOrEqualTo(root.get("transactionDate"), end);
     }
+
+    /** Busca por descrição (contém, case-insensitive) — para funcionar em todas as páginas. */
+    public static Specification<Transaction> descriptionContains(String search) {
+        if (search == null || search.isBlank()) return null;
+        String like = "%" + search.trim().toLowerCase() + "%";
+        return (root, query, cb) -> cb.like(cb.lower(root.get("description")), like);
+    }
 }

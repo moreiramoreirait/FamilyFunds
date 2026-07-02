@@ -71,10 +71,11 @@ public class TransactionController {
             @RequestParam(required = false) UUID tagId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(required = false) String search,
             @AuthenticationPrincipal User user) {
         familyGroupService.assertMember(groupId, user.getId());
         return ResponseEntity.ok(transactionService.getAll(
-                groupId, page, size, type, status, accountId, categoryId, tagId, startDate, endDate));
+                groupId, page, size, type, status, accountId, categoryId, tagId, startDate, endDate, search));
     }
 
     @GetMapping("/{transactionId}")

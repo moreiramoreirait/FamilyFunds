@@ -38,13 +38,13 @@ public class TransactionService {
     private final CategorizationService categorizationService;
 
     public Page<TransactionResponse> getAll(UUID familyGroupId, int page, int size) {
-        return getAll(familyGroupId, page, size, null, null, null, null, null, null, null);
+        return getAll(familyGroupId, page, size, null, null, null, null, null, null, null, null);
     }
 
     public Page<TransactionResponse> getAll(UUID familyGroupId, int page, int size,
                                             TransactionType type, TransactionStatus status,
                                             UUID accountId, UUID categoryId, UUID tagId,
-                                            LocalDate startDate, LocalDate endDate) {
+                                            LocalDate startDate, LocalDate endDate, String search) {
         Specification<Transaction> spec = Specification.where(inFamilyGroup(familyGroupId))
                 .and(hasType(type))
                 .and(hasStatus(status))
@@ -52,7 +52,8 @@ public class TransactionService {
                 .and(hasCategory(categoryId))
                 .and(hasTag(tagId))
                 .and(dateFrom(startDate))
-                .and(dateTo(endDate));
+                .and(dateTo(endDate))
+                .and(descriptionContains(search));
 
         PageRequest pageRequest = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "transactionDate"));

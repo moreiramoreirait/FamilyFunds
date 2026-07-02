@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, X, TrendingUp, TrendingDown, ArrowUpDown, CheckCircle2, Pencil, Tag } from 'lucide-react'
 import { transactionsApi, type TransactionFilters } from '@/api/transactions'
@@ -33,8 +33,16 @@ export default function TransactionsPage() {
   const activeGroupId = currentGroupId || groups?.[0]?.id
 
   const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filters, setFilters] = useState<TransactionFilters>({})
+
+  // Busca server-side com debounce (funciona em todas as páginas)
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedSearch(search.trim()); setPage(0) }, 400)
+    return () => clearTimeout(t)
+  }, [search])
   const [modalOpen, setModalOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const [categorizeTx, setCategorizeTx] = useState<Transaction | null>(null)
@@ -65,8 +73,8 @@ export default function TransactionsPage() {
   const hasFilters = Object.values(filters).some(Boolean)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['transactions', activeGroupId, page, filters],
-    queryFn: () => transactionsApi.list(activeGroupId!, page, 20, filters),
+    queryKey: ['transactions', activeGroupId, page, pageSize, filters, debouncedSearch],
+    queryFn: () => transactionsApi.list(activeGroupId!, page, pageSize, { ...filters, search: debouncedSearch || undefined }),
     enabled: !!activeGroupId,
   })
 
@@ -93,10 +101,6 @@ export default function TransactionsPage() {
   const transactions = data?.content ?? []
   const totalPages = data?.totalPages ?? 0
   const totalElements = data?.totalElements ?? 0
-
-  const filtered = transactions.filter(t =>
-    search === '' || t.description.toLowerCase().includes(search.toLowerCase())
-  )
 
   return (
     <div className="space-y-6">
@@ -204,15 +208,17 @@ export default function TransactionsPage() {
                 <div key={i} className="h-14 bg-muted animate-pulse rounded-lg" />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : transactions.length === 0 ? (
             <div className="p-12 text-center">
               <ArrowUpDown className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="font-semibold text-lg mb-2">Nenhum lançamento</h3>
-              <p className="text-muted-foreground text-sm">Comece adicionando seu primeiro lançamento</p>
+              <p className="text-muted-foreground text-sm">
+                {debouncedSearch || hasFilters ? 'Nenhum resultado para os filtros aplicados' : 'Comece adicionando seu primeiro lançamento'}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {filtered.map(tx => (
+              {transactions.map(tx => (
                 <TransactionRow
                   key={tx.id}
                   tx={tx}
@@ -226,17 +232,28 @@ export default function TransactionsPage() {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t border-border">
-              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                Anterior
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Página {page + 1} de {totalPages}
-              </span>
-              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
-                Próxima
-              </Button>
+          {totalElements > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Por página:</span>
+                <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(0) }}>
+                  <SelectTrigger className="h-8 w-[72px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[20, 50, 100].map(n => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  Anterior
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Página {page + 1} de {Math.max(totalPages, 1)}
+                </span>
+                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  Próxima
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
