@@ -49,6 +49,19 @@ public class StripeService {
         }
     }
 
+    /** Cancela a assinatura no Stripe (best-effort — nunca lança). Usado ao excluir a conta. */
+    public void cancelSubscriptionOnStripe(String stripeSubscriptionId) {
+        if (stripeSubscriptionId == null || stripeSubscriptionId.isBlank()) return;
+        if (secretKey == null || secretKey.isBlank()) return;
+        try {
+            com.stripe.model.Subscription sub = com.stripe.model.Subscription.retrieve(stripeSubscriptionId);
+            sub.cancel();
+            log.info("Assinatura Stripe cancelada: {}", stripeSubscriptionId);
+        } catch (Exception e) {
+            log.error("Falha ao cancelar assinatura Stripe {}: {}", stripeSubscriptionId, e.getMessage());
+        }
+    }
+
     public String createCheckoutSession(UUID familyGroupId, PlanType plan, User user) {
         assertConfigured();
         if (plan == PlanType.FREE) {

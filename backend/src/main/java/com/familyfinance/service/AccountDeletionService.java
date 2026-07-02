@@ -7,6 +7,7 @@ import com.familyfinance.exception.ResourceNotFoundException;
 import com.familyfinance.exception.UnauthorizedException;
 import com.familyfinance.repository.FamilyGroupMemberRepository;
 import com.familyfinance.repository.FamilyGroupRepository;
+import com.familyfinance.repository.SubscriptionRepository;
 import com.familyfinance.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,8 @@ public class AccountDeletionService {
     private final UserRepository userRepository;
     private final FamilyGroupRepository familyGroupRepository;
     private final FamilyGroupMemberRepository memberRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final StripeService stripeService;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -51,6 +54,9 @@ public class AccountDeletionService {
                     .toList();
 
             if (others.isEmpty()) {
+                // Cancela a assinatura no Stripe (best-effort) antes de apagar a família
+                subscriptionRepository.findByFamilyGroupId(groupId)
+                        .ifPresent(sub -> stripeService.cancelSubscriptionOnStripe(sub.getStripeSubscriptionId()));
                 // Só ele no grupo → apaga a família (cascata remove contas, lançamentos, etc.)
                 familyGroupRepository.deleteById(groupId);
             } else {
