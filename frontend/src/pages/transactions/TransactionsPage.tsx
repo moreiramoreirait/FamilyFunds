@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, formatDate, getStatusLabel, cn } from '@/lib/utils'
+import { CategoryIcon } from '@/lib/categoryIcons'
 import type { Transaction } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import { TransactionModal } from '@/components/transactions/TransactionModal'
@@ -273,16 +274,22 @@ export default function TransactionsPage() {
 function TransactionRow({ tx, onMarkPaid, onDelete, onEdit, onCategorize }: { tx: Transaction; onMarkPaid: () => void; onDelete: () => void; onEdit: () => void; onCategorize: () => void }) {
   const isIncome = tx.type === 'INCOME'
   const isTransfer = tx.type === 'TRANSFER'
+  const hasCategoryIcon = !isTransfer && !!tx.categoryIcon
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group">
-      <div className={cn(
-        "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0",
-        isIncome ? 'bg-emerald-100 dark:bg-emerald-900/30' :
-        isTransfer ? 'bg-blue-100 dark:bg-blue-900/30' :
-        'bg-rose-100 dark:bg-rose-900/30'
-      )}>
-        {isIncome ? <TrendingUp className="h-4 w-4 text-emerald-600" /> :
+      <div
+        className={cn(
+          "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0",
+          hasCategoryIcon ? '' :
+          isIncome ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+          isTransfer ? 'bg-blue-100 dark:bg-blue-900/30' :
+          'bg-rose-100 dark:bg-rose-900/30'
+        )}
+        style={hasCategoryIcon ? { backgroundColor: (tx.categoryColor || '#94a3b8') + '22', color: tx.categoryColor || '#64748b' } : undefined}
+      >
+        {hasCategoryIcon ? <CategoryIcon icon={tx.categoryIcon} className="h-4 w-4" /> :
+         isIncome ? <TrendingUp className="h-4 w-4 text-emerald-600" /> :
          isTransfer ? <ArrowUpDown className="h-4 w-4 text-blue-600" /> :
          <TrendingDown className="h-4 w-4 text-rose-600" />}
       </div>
@@ -307,7 +314,10 @@ function TransactionRow({ tx, onMarkPaid, onDelete, onEdit, onCategorize }: { tx
           {tx.accountName && (
             <>
               <span className="text-muted-foreground text-xs">•</span>
-              <span className="text-xs text-muted-foreground">{tx.accountName}</span>
+              <span className="text-xs text-muted-foreground">
+                {tx.accountName}
+                {isTransfer && tx.destinationAccountName ? ` → ${tx.destinationAccountName}` : ''}
+              </span>
             </>
           )}
         </div>
@@ -331,8 +341,8 @@ function TransactionRow({ tx, onMarkPaid, onDelete, onEdit, onCategorize }: { tx
 
       <div className="flex items-center gap-3">
         <div className="text-right">
-          <p className={cn("text-sm font-bold", isIncome ? 'text-income' : 'text-expense')}>
-            {isIncome ? '+' : '-'}{formatCurrency(tx.amount)}
+          <p className={cn("text-sm font-bold", isIncome ? 'text-income' : isTransfer ? 'text-blue-600' : 'text-expense')}>
+            {isIncome ? '+' : isTransfer ? '' : '-'}{formatCurrency(tx.amount)}
           </p>
           <div className="mt-0.5">
             <StatusBadge status={tx.status} />

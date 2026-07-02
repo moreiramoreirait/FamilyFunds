@@ -7,25 +7,26 @@ import { familyGroupsApi } from '@/api/familyGroups'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { CategoryIcon } from '@/lib/categoryIcons'
+import { CategoryFormDialog } from '@/components/categories/CategoryFormDialog'
 import type { Category } from '@/types'
 
 const typeLabels = { INCOME: 'Receita', EXPENSE: 'Despesa', BOTH: 'Ambos' }
 const typeBadge: Record<string, any> = { INCOME: 'income', EXPENSE: 'expense', BOTH: 'default' }
 
-function CategoryItem({ category, onDelete }: { category: Category; onDelete: (id: string) => void }) {
+function CategoryItem({ category, onDelete, onEdit }: { category: Category; onDelete: (id: string) => void; onEdit: (c: Category) => void }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden group">
       <div
         className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors"
         onClick={() => category.subcategories.length > 0 && setExpanded(e => !e)}
       >
         <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: category.color ? category.color + '20' : undefined }}>
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color || '#94a3b8' }} />
+          style={{ backgroundColor: (category.color || '#94a3b8') + '22', color: category.color || '#64748b' }}>
+          <CategoryIcon icon={category.icon} className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm">{category.name}</p>
@@ -34,6 +35,10 @@ function CategoryItem({ category, onDelete }: { category: Category; onDelete: (i
         <div className="flex items-center gap-2">
           <Badge variant={typeBadge[category.type]} className="text-xs">{typeLabels[category.type]}</Badge>
           {category.isSystem && <Badge variant="outline" className="text-xs">Sistema</Badge>}
+          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100"
+            onClick={e => { e.stopPropagation(); onEdit(category) }}>
+            <Edit2 className="h-3.5 w-3.5" />
+          </Button>
           {!category.isSystem && (
             <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100"
               onClick={e => { e.stopPropagation(); onDelete(category.id) }}>
@@ -66,6 +71,11 @@ export default function CategoriesPage() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL')
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editCategory, setEditCategory] = useState<Category | null>(null)
+
+  const openCreate = () => { setEditCategory(null); setDialogOpen(true) }
+  const openEdit = (c: Category) => { setEditCategory(c); setDialogOpen(true) }
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['categories', activeGroupId],
@@ -91,7 +101,7 @@ export default function CategoriesPage() {
           <h1 className="text-2xl font-bold">Categorias</h1>
           <p className="text-muted-foreground text-sm">{categories.length} categorias cadastradas</p>
         </div>
-        <Button className="gap-2" onClick={() => toast({ title: 'Em breve', description: 'Cadastro de categoria' })}>
+        <Button className="gap-2" onClick={openCreate}>
           <Plus className="h-4 w-4" /> Nova Categoria
         </Button>
       </div>
@@ -121,10 +131,19 @@ export default function CategoriesPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {filtered.map(cat => (
-              <CategoryItem key={cat.id} category={cat} onDelete={id => deleteMutation.mutate(id)} />
+              <CategoryItem key={cat.id} category={cat} onDelete={id => deleteMutation.mutate(id)} onEdit={openEdit} />
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {activeGroupId && (
+        <CategoryFormDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          groupId={activeGroupId}
+          category={editCategory}
+        />
       )}
     </div>
   )

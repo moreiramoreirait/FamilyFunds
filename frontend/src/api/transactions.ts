@@ -9,6 +9,7 @@ export interface TransactionPayload {
   dueDate?: string
   paidDate?: string
   accountId?: string
+  destinationAccountId?: string
   categoryId?: string
   subcategoryId?: string
   costCenterId?: string

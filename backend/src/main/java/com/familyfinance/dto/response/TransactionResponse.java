@@ -21,6 +21,8 @@ public record TransactionResponse(
         LocalDate paidDate,
         UUID accountId,
         String accountName,
+        UUID destinationAccountId,
+        String destinationAccountName,
         UUID creditCardId,
         String creditCardName,
         UUID categoryId,

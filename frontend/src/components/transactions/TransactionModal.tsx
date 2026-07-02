@@ -4,10 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import {
-  Car, Utensils, BookOpen, TrendingUp, Smile, Home, MoreHorizontal,
-  Heart, Shirt, Briefcase, Circle, Plus, Check,
-} from 'lucide-react'
+import { Plus, Check, ArrowRight } from 'lucide-react'
+import { CategoryIcon } from '@/lib/categoryIcons'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,18 +21,6 @@ import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 import type { Transaction } from '@/types'
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  'car': Car, 'utensils': Utensils, 'book-open': BookOpen,
-  'trending-up': TrendingUp, 'smile': Smile, 'home': Home,
-  'more-horizontal': MoreHorizontal, 'heart': Heart,
-  'shirt': Shirt, 'briefcase': Briefcase,
-}
-
-function CategoryIcon({ icon, className = 'h-4 w-4 inline-block mr-1.5' }: { icon?: string; className?: string }) {
-  const Icon = (icon && ICON_MAP[icon]) ? ICON_MAP[icon] : Circle
-  return <Icon className={className} />
-}
-
 const schema = z.object({
   description: z.string().min(1, 'Descrição é obrigatória'),
   amount: z.string().min(1, 'Valor é obrigatório'),
@@ -44,6 +30,7 @@ const schema = z.object({
   categoryId: z.string().optional(),
   subcategoryId: z.string().optional(),
   accountId: z.string().optional(),
+  destinationAccountId: z.string().optional(),
   status: z.enum(['PENDING', 'PAID', 'CANCELLED']),
   notes: z.string().optional(),
   tagIds: z.array(z.string()).default([]),
@@ -120,6 +107,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         categoryId: transaction.categoryId || '',
         subcategoryId: (transaction as any).subcategoryId || '',
         accountId: transaction.accountId || '',
+        destinationAccountId: transaction.destinationAccountId || '',
         status: transaction.status as any,
         notes: transaction.notes || '',
         tagIds: transaction.tags?.map(t => t.id) ?? [],
@@ -156,15 +144,17 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
 
   const mutation = useMutation<unknown, Error, FormData>({
     mutationFn: (data: FormData) => {
+      const isTransfer = data.type === 'TRANSFER'
       const payload = {
         description: data.description,
         amount: parseFloat(data.amount.replace(',', '.')),
         type: data.type,
         transactionDate: data.transactionDate,
         dueDate: data.dueDate || undefined,
-        categoryId: data.categoryId || undefined,
-        subcategoryId: data.subcategoryId || undefined,
+        categoryId: isTransfer ? undefined : (data.categoryId || undefined),
+        subcategoryId: isTransfer ? undefined : (data.subcategoryId || undefined),
         accountId: data.accountId || undefined,
+        destinationAccountId: isTransfer ? (data.destinationAccountId || undefined) : undefined,
         status: data.status,
         notes: data.notes || undefined,
         tagIds: data.tagIds,
@@ -172,6 +162,14 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
       }
       if (!groupId) {
         throw new Error('Nenhum grupo familiar selecionado. Crie ou selecione uma família primeiro.')
+      }
+      if (isTransfer) {
+        if (!payload.accountId || !payload.destinationAccountId) {
+          throw new Error('Selecione a conta de origem e a conta de destino.')
+        }
+        if (payload.accountId === payload.destinationAccountId) {
+          throw new Error('A conta de origem e a de destino devem ser diferentes.')
+        }
       }
       return isEdit
         ? transactionsApi.update(groupId, transaction!.id, payload)
@@ -275,42 +273,74 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
             </div>
           </div>
 
-          {/* Category + Account */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Categoria</Label>
-              <Controller name="categoryId" control={control} render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredCategories.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        <span className="flex items-center gap-1.5">
-                          <CategoryIcon icon={c.icon} className="h-3.5 w-3.5 inline-block" />
-                          {c.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )} />
+          {/* Transferência: conta origem → destino. Demais: categoria + conta */}
+          {selectedType === 'TRANSFER' ? (
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+              <div className="space-y-1.5">
+                <Label>Conta origem</Label>
+                <Controller name="accountId" control={control} render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue placeholder="De..." /></SelectTrigger>
+                    <SelectContent>
+                      {accounts.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground mb-2.5" />
+              <div className="space-y-1.5">
+                <Label>Conta destino</Label>
+                <Controller name="destinationAccountId" control={control} render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue placeholder="Para..." /></SelectTrigger>
+                    <SelectContent>
+                      {accounts.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Conta</Label>
-              <Controller name="accountId" control={control} render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                  <SelectContent>
-                    {accounts.map(a => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )} />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Categoria</Label>
+                <Controller name="categoryId" control={control} render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredCategories.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="flex items-center gap-1.5">
+                            <CategoryIcon icon={c.icon} className="h-3.5 w-3.5 inline-block" />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Conta</Label>
+                <Controller name="accountId" control={control} render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                    <SelectContent>
+                      {accounts.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Subcategory — only shown when category has subcategories */}
           {subcategories.length > 0 && (
@@ -401,7 +431,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
           </div>
 
           {/* Installment toggle */}
-          {!isEdit && (
+          {!isEdit && selectedType !== 'TRANSFER' && (
             <div className="space-y-3 border border-border rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <Label className="cursor-pointer" htmlFor="isInstallment">Parcelado</Label>

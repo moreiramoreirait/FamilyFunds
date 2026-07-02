@@ -68,30 +68,24 @@ public class TransactionService {
     @Transactional
     public TransactionResponse create(UUID familyGroupId, TransactionRequest request, User currentUser) {
         subscriptionService.checkTransactionLimit(familyGroupId);
+        validateTransfer(request);
         FamilyGroup group = new FamilyGroup();
         group.setId(familyGroupId);
 
         Transaction t = buildTransaction(request, group, currentUser);
-        // Regra de categorização automática (se o usuário não escolheu categoria)
-        if (t.getCategory() == null) {
+        // Regra de categorização automática (se o usuário não escolheu categoria) — não se aplica a transferências
+        if (t.getCategory() == null && t.getType() != TransactionType.TRANSFER) {
             Category auto = categorizationService.resolveCategory(familyGroupId, t.getDescription());
             if (auto != null) t.setCategory(auto);
         }
         t = transactionRepository.save(t);
 
-        // Update account balance if paid
-        if (request.accountId() != null && isPaid(t)) {
+        // Atualiza saldo(s) se pago — transferência ajusta origem e destino
+        if (isPaid(t)) {
             updateAccountBalance(t, true);
         }
 
-        boolean income = t.getType() == TransactionType.INCOME;
-        notificationService.notifyMembersOfAction(familyGroupId, currentUser.getId(),
-                income ? "Nova receita" : "Nova despesa",
-                String.format("%s registrou %s \"%s\" — R$ %s",
-                        currentUser.getName(), income ? "a receita" : "a despesa",
-                        t.getDescription(), t.getAmount().toPlainString()),
-                "TRANSACTION_CREATED");
-
+        notifyCreated(familyGroupId, currentUser, t);
         return toResponse(t);
     }
 
@@ -127,24 +121,19 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse update(UUID familyGroupId, UUID transactionId, TransactionRequest request) {
+        validateTransfer(request);
         Transaction existing = findAndValidate(familyGroupId, transactionId);
-        boolean wasPaid = isPaid(existing);
-        UUID oldAccountId = existing.getAccount() != null ? existing.getAccount().getId() : null;
-        BigDecimal oldAmount = existing.getAmount();
 
-        // Reverse old balance effect
-        if (oldAccountId != null && wasPaid) {
-            BigDecimal delta = existing.getType() == TransactionType.INCOME ? oldAmount.negate() : oldAmount;
-            accountService.updateBalance(oldAccountId, delta);
+        // Reverte o efeito de saldo antigo (origem e destino, conforme o tipo antigo)
+        if (isPaid(existing)) {
+            updateAccountBalance(existing, false);
         }
 
-        FamilyGroup group = new FamilyGroup();
-        group.setId(familyGroupId);
         updateTransaction(existing, request);
         existing = transactionRepository.save(existing);
 
-        // Apply new balance effect
-        if (request.accountId() != null && isPaid(existing)) {
+        // Aplica o novo efeito de saldo
+        if (isPaid(existing)) {
             updateAccountBalance(existing, true);
         }
 
@@ -161,7 +150,7 @@ public class TransactionService {
         t.setStatus(TransactionStatus.PAID);
         t.setPaidDate(paidDate != null ? paidDate : LocalDate.now());
         t = transactionRepository.save(t);
-        if (t.getAccount() != null && oldStatus != TransactionStatus.PAID) {
+        if (oldStatus != TransactionStatus.PAID) {
             updateAccountBalance(t, true);
         }
         if (currentUser != null) {
@@ -177,7 +166,7 @@ public class TransactionService {
     @Transactional
     public void delete(UUID familyGroupId, UUID transactionId) {
         Transaction t = findAndValidate(familyGroupId, transactionId);
-        if (isPaid(t) && t.getAccount() != null) {
+        if (isPaid(t)) {
             updateAccountBalance(t, false);
         }
         t.setStatus(TransactionStatus.CANCELLED);
@@ -242,6 +231,12 @@ public class TransactionService {
         t.setNotes(r.notes());
         if (r.status() != null) t.setStatus(r.status());
         if (r.accountId() != null) { Account a = new Account(); a.setId(r.accountId()); t.setAccount(a); }
+        // Conta destino só faz sentido em transferências — limpa ao trocar o tipo
+        if (r.type() == TransactionType.TRANSFER) {
+            if (r.destinationAccountId() != null) { Account a = new Account(); a.setId(r.destinationAccountId()); t.setDestinationAccount(a); }
+        } else {
+            t.setDestinationAccount(null);
+        }
         if (r.categoryId() != null) { Category c = new Category(); c.setId(r.categoryId()); t.setCategory(c); }
         if (r.subcategoryId() != null) { Subcategory s = new Subcategory(); s.setId(r.subcategoryId()); t.setSubcategory(s); }
         if (r.costCenterId() != null) { CostCenter cc = new CostCenter(); cc.setId(r.costCenterId()); t.setCostCenter(cc); }
@@ -255,8 +250,20 @@ public class TransactionService {
     }
 
     private void updateAccountBalance(Transaction t, boolean apply) {
-        if (t.getAccount() == null) return;
         BigDecimal amount = t.getAmount();
+
+        // Transferência: debita a origem e credita o destino (apply); inverte ao reverter.
+        if (t.getType() == TransactionType.TRANSFER) {
+            if (t.getAccount() != null) {
+                accountService.updateBalance(t.getAccount().getId(), apply ? amount.negate() : amount);
+            }
+            if (t.getDestinationAccount() != null) {
+                accountService.updateBalance(t.getDestinationAccount().getId(), apply ? amount : amount.negate());
+            }
+            return;
+        }
+
+        if (t.getAccount() == null) return;
         BigDecimal delta;
         if (t.getType() == TransactionType.INCOME) {
             delta = apply ? amount : amount.negate();
@@ -264,6 +271,28 @@ public class TransactionService {
             delta = apply ? amount.negate() : amount;
         }
         accountService.updateBalance(t.getAccount().getId(), delta);
+    }
+
+    private void validateTransfer(TransactionRequest request) {
+        if (request.type() != TransactionType.TRANSFER) return;
+        if (request.accountId() == null || request.destinationAccountId() == null)
+            throw new BusinessException("Transferência exige conta de origem e conta de destino");
+        if (request.accountId().equals(request.destinationAccountId()))
+            throw new BusinessException("A conta de origem e a de destino devem ser diferentes");
+    }
+
+    private void notifyCreated(UUID familyGroupId, User currentUser, Transaction t) {
+        String titulo, artigo;
+        switch (t.getType()) {
+            case INCOME -> { titulo = "Nova receita"; artigo = "a receita"; }
+            case TRANSFER -> { titulo = "Nova transferência"; artigo = "a transferência"; }
+            default -> { titulo = "Nova despesa"; artigo = "a despesa"; }
+        }
+        notificationService.notifyMembersOfAction(familyGroupId, currentUser.getId(),
+                titulo,
+                String.format("%s registrou %s \"%s\" — R$ %s",
+                        currentUser.getName(), artigo, t.getDescription(), t.getAmount().toPlainString()),
+                "TRANSACTION_CREATED");
     }
 
     private Transaction findAndValidate(UUID familyGroupId, UUID transactionId) {
@@ -284,6 +313,8 @@ public class TransactionService {
                 t.getTransactionDate(), t.getDueDate(), t.getPaidDate(),
                 t.getAccount() != null ? t.getAccount().getId() : null,
                 t.getAccount() != null ? t.getAccount().getName() : null,
+                t.getDestinationAccount() != null ? t.getDestinationAccount().getId() : null,
+                t.getDestinationAccount() != null ? t.getDestinationAccount().getName() : null,
                 t.getCreditCard() != null ? t.getCreditCard().getId() : null,
                 t.getCreditCard() != null ? t.getCreditCard().getName() : null,
                 t.getCategory() != null ? t.getCategory().getId() : null,

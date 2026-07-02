@@ -139,6 +139,8 @@ export interface Transaction {
   paidDate?: string
   accountId?: string
   accountName?: string
+  destinationAccountId?: string
+  destinationAccountName?: string
   creditCardId?: string
   creditCardName?: string
   categoryId?: string
