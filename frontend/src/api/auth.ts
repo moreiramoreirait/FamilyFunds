@@ -19,4 +19,7 @@ export const authApi = {
 
   resetPassword: (token: string, newPassword: string) =>
     apiClient.post('/auth/reset-password', { token, newPassword }),
+
+  deleteAccount: (password: string) =>
+    apiClient.post('/users/me/delete', { password }),
 }

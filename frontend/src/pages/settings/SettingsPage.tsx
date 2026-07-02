@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bot, Key, Trash2, Check, Sun, Moon, Monitor, Bell, User } from 'lucide-react'
+import { Bot, Key, Trash2, Check, Sun, Moon, Monitor, Bell, User, AlertTriangle } from 'lucide-react'
 import apiClient from '@/api/client'
+import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
 import { useUIStore as useUiStore } from '@/store/uiStore'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -135,14 +137,27 @@ function AiTab({ groupId }: { groupId: string }) {
 }
 
 export default function SettingsPage() {
-  const { user, updateUser, currentGroupId } = useAuthStore()
+  const { user, updateUser, currentGroupId, logout } = useAuthStore()
   const { theme, setTheme } = useUiStore()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [name, setName] = useState(user?.name || '')
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
 
   const profileMutation = useMutation({
     mutationFn: (data: { name: string }) => apiClient.put('/users/me', data),
     onSuccess: (res) => { updateUser(res.data); toast({ title: 'Perfil atualizado!' }) },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: () => authApi.deleteAccount(deletePassword),
+    onSuccess: () => {
+      toast({ title: 'Conta excluída', description: 'Seus dados foram removidos.' })
+      logout()
+      navigate('/login')
+    },
+    onError: (e: any) => toast({ title: e?.response?.data?.message || 'Erro ao excluir conta', variant: 'destructive' }),
   })
 
   return (
@@ -176,7 +191,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="profile" className="mt-4">
+        <TabsContent value="profile" className="mt-4 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2"><User className="h-4 w-4" /> Informações pessoais</CardTitle>
@@ -194,6 +209,24 @@ export default function SettingsPage() {
                 </div>
                 <Button onClick={() => profileMutation.mutate({ name })} disabled={profileMutation.isPending}>
                   {profileMutation.isPending ? 'Salvando...' : 'Salvar alterações'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-destructive/40">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2 text-destructive"><AlertTriangle className="h-4 w-4" /> Zona de perigo</CardTitle>
+              <CardDescription>Excluir sua conta é permanente e não pode ser desfeito.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 max-w-md">
+                <p className="text-sm text-muted-foreground">
+                  Ao excluir, seus dados pessoais são removidos (anonimizados). As famílias em que você é o único membro são apagadas com todos os dados financeiros; nas compartilhadas, você apenas deixa o grupo.
+                </p>
+                <Button variant="outline" className="border-destructive text-destructive hover:bg-destructive/10 gap-2"
+                  onClick={() => { setDeletePassword(''); setDeleteOpen(true) }}>
+                  <Trash2 className="h-4 w-4" /> Excluir minha conta
                 </Button>
               </div>
             </CardContent>
@@ -241,6 +274,32 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {deleteOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDeleteOpen(false)}>
+          <Card className="w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Excluir minha conta</CardTitle>
+              <CardDescription>Esta ação é permanente. Digite sua senha para confirmar.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Senha</Label>
+                <Input type="password" placeholder="Sua senha atual" value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)} autoFocus />
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+                <Button className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
+                  disabled={!deletePassword || deleteMutation.isPending}
+                  onClick={() => deleteMutation.mutate()}>
+                  <Trash2 className="h-4 w-4" /> {deleteMutation.isPending ? 'Excluindo…' : 'Excluir definitivamente'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

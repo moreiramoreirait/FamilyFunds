@@ -17,4 +17,5 @@ public interface FamilyGroupMemberRepository extends JpaRepository<FamilyGroupMe
     Optional<FamilyGroupMember> findByFamilyGroupIdAndUserIdAndRole(UUID familyGroupId, UUID userId, MemberRole role);
     long countByFamilyGroupIdAndIsActiveTrue(UUID familyGroupId);
     List<FamilyGroupMember> findByUserIdAndRoleAndIsActiveTrue(UUID userId, MemberRole role);
+    List<FamilyGroupMember> findByUserIdAndIsActiveTrue(UUID userId);
 }
