@@ -63,6 +63,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
 
     // Categorização em massa: lançamentos cuja descrição contém a palavra-chave
     List<Transaction> findByFamilyGroupIdAndDescriptionContainingIgnoreCase(UUID familyGroupId, String keyword);
+    long countByFamilyGroupIdAndDescriptionContainingIgnoreCase(UUID familyGroupId, String keyword);
 
     List<Transaction> findByFamilyGroupIdAndTransactionDateBetweenAndStatus(
             UUID familyGroupId, LocalDate start, LocalDate end, TransactionStatus status);

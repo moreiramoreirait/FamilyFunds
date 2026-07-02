@@ -69,6 +69,14 @@ public class CategorizationService {
         return new CategorizeResultResponse(affected, ruleCreated);
     }
 
+    /** Quantos lançamentos contêm a palavra-chave (preview antes de aplicar). */
+    @Transactional(readOnly = true)
+    public long countMatching(UUID groupId, String keyword, User user) {
+        familyGroupService.assertMember(groupId, user.getId());
+        if (keyword == null || keyword.isBlank()) return 0;
+        return transactionRepository.countByFamilyGroupIdAndDescriptionContainingIgnoreCase(groupId, keyword.trim());
+    }
+
     private void upsertRule(UUID groupId, String rawKeyword, Category category, User user) {
         String kw = normalize(rawKeyword);
         if (kw.isBlank()) return;

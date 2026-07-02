@@ -49,6 +49,15 @@ public class TransactionController {
                 groupId, transactionId, req.categoryId(), req.scope(), req.keyword(), user));
     }
 
+    @GetMapping("/categorize-count")
+    @Operation(summary = "Quantos lançamentos contêm a palavra-chave")
+    public ResponseEntity<java.util.Map<String, Long>> categorizeCount(
+            @PathVariable UUID groupId,
+            @RequestParam String keyword,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(java.util.Map.of("count", categorizationService.countMatching(groupId, keyword, user)));
+    }
+
     @GetMapping
     @Operation(summary = "List transactions with pagination and optional filters")
     public ResponseEntity<Page<TransactionResponse>> list(

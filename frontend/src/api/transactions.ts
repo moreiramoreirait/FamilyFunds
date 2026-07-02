@@ -61,4 +61,7 @@ export const transactionsApi = {
 
   categorize: (groupId: string, id: string, data: { categoryId: string; scope: 'SINGLE' | 'ALL_MATCHING' | 'THIS_AND_FUTURE'; keyword?: string }) =>
     apiClient.post<{ affected: number; ruleCreated: boolean }>(`/family-groups/${groupId}/transactions/${id}/categorize`, data).then(r => r.data),
+
+  categorizeCount: (groupId: string, keyword: string) =>
+    apiClient.get<{ count: number }>(`/family-groups/${groupId}/transactions/categorize-count`, { params: { keyword } }).then(r => r.data.count),
 }

@@ -36,6 +36,13 @@ export function CategorizeDialog({ open, onClose, groupId, transaction }: Props)
     queryKey: ['categories', groupId], queryFn: () => categoriesApi.list(groupId), enabled: open,
   })
 
+  const kw = keyword.trim()
+  const { data: matchCount } = useQuery({
+    queryKey: ['categorize-count', groupId, kw],
+    queryFn: () => transactionsApi.categorizeCount(groupId, kw),
+    enabled: open && kw.length > 0,
+  })
+
   const mutation = useMutation({
     mutationFn: (scope: Scope) =>
       transactionsApi.categorize(groupId, transaction.id, { categoryId, scope, keyword: keyword.trim() || undefined }),
@@ -85,8 +92,8 @@ export function CategorizeDialog({ open, onClose, groupId, transaction }: Props)
             <Button className="w-full" variant="outline" disabled={disabled} onClick={() => mutation.mutate('SINGLE')}>
               Só este lançamento
             </Button>
-            <Button className="w-full" variant="outline" disabled={disabled || !keyword.trim()} onClick={() => mutation.mutate('ALL_MATCHING')}>
-              Todos com "{keyword.trim() || '—'}" (inclui antigos)
+            <Button className="w-full" variant="outline" disabled={disabled || !kw} onClick={() => mutation.mutate('ALL_MATCHING')}>
+              Todos com "{kw || '—'}"{matchCount != null ? ` (${matchCount})` : ''} — inclui antigos
             </Button>
             <Button className="w-full gap-2" disabled={disabled || !keyword.trim()} onClick={() => mutation.mutate('THIS_AND_FUTURE')}>
               {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
