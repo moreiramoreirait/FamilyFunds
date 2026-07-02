@@ -1,5 +1,6 @@
 package com.familyfinance.controller;
 
+import com.familyfinance.dto.request.BulkDeleteRequest;
 import com.familyfinance.dto.request.CategorizeRequest;
 import com.familyfinance.dto.request.TransactionRequest;
 import com.familyfinance.dto.response.CategorizeResultResponse;
@@ -135,6 +136,17 @@ public class TransactionController {
             @AuthenticationPrincipal User user) {
         familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
         transactionService.delete(groupId, transactionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/bulk-delete")
+    @Operation(summary = "Excluir vários lançamentos de uma vez")
+    public ResponseEntity<Void> bulkDelete(
+            @PathVariable UUID groupId,
+            @Valid @RequestBody BulkDeleteRequest req,
+            @AuthenticationPrincipal User user) {
+        familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
+        transactionService.deleteMany(groupId, req.ids());
         return ResponseEntity.noContent().build();
     }
 }

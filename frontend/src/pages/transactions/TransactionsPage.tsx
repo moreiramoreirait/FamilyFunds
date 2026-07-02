@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, X, TrendingUp, TrendingDown, ArrowUpDown, CheckCircle2, Pencil, Tag } from 'lucide-react'
+import { Plus, Search, X, TrendingUp, TrendingDown, ArrowUpDown, CheckCircle2, Pencil, Tag, Trash2 } from 'lucide-react'
 import { transactionsApi, type TransactionFilters } from '@/api/transactions'
 import { accountsApi } from '@/api/accounts'
 import { categoriesApi } from '@/api/categories'
@@ -47,8 +47,12 @@ export default function TransactionsPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editTx, setEditTx] = useState<Transaction | null>(null)
   const [categorizeTx, setCategorizeTx] = useState<Transaction | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const { toast } = useToast()
   const queryClient = useQueryClient()
+
+  // Limpa a seleção ao mudar de página, tamanho, filtros ou busca
+  useEffect(() => { setSelected(new Set()) }, [page, pageSize, filters, debouncedSearch])
 
   const { data: accounts = [] } = useQuery({
     queryKey: ['accounts', activeGroupId],
@@ -94,12 +98,40 @@ export default function TransactionsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      toast({ title: 'Lançamento cancelado' })
+      toast({ title: 'Lançamento excluído' })
     },
-    onError: () => toast({ title: 'Erro ao cancelar lançamento', variant: 'destructive' }),
+    onError: () => toast({ title: 'Erro ao excluir lançamento', variant: 'destructive' }),
+  })
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => transactionsApi.bulkDelete(activeGroupId!, ids),
+    onSuccess: (_r, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      setSelected(new Set())
+      toast({ title: `${ids.length} lançamento(s) excluído(s)` })
+    },
+    onError: () => toast({ title: 'Erro ao excluir lançamentos', variant: 'destructive' }),
   })
 
   const transactions = data?.content ?? []
+
+  const toggleSelect = (id: string) => setSelected(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+  const allOnPageSelected = transactions.length > 0 && transactions.every(t => selected.has(t.id))
+  const toggleSelectAll = () => setSelected(prev => {
+    if (transactions.every(t => prev.has(t.id))) return new Set()
+    return new Set(transactions.map(t => t.id))
+  })
+  const handleBulkDelete = () => {
+    if (selected.size === 0) return
+    if (window.confirm(`Excluir ${selected.size} lançamento(s) selecionado(s)?`)) {
+      bulkDeleteMutation.mutate([...selected])
+    }
+  }
   const totalPages = data?.totalPages ?? 0
   const totalElements = data?.totalElements ?? 0
 
@@ -200,7 +232,27 @@ export default function TransactionsPage() {
       {/* Transactions Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Todos os lançamentos</CardTitle>
+          {selected.size > 0 ? (
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{selected.size} selecionado(s)</span>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>Limpar</Button>
+                <Button variant="destructive" size="sm" className="gap-1.5" disabled={bulkDeleteMutation.isPending} onClick={handleBulkDelete}>
+                  <Trash2 className="h-4 w-4" /> Excluir selecionados
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Todos os lançamentos</CardTitle>
+              {transactions.length > 0 && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} className="h-4 w-4 rounded border-gray-300" />
+                  Selecionar página
+                </label>
+              )}
+            </div>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           {isLoading ? (
@@ -223,6 +275,8 @@ export default function TransactionsPage() {
                 <TransactionRow
                   key={tx.id}
                   tx={tx}
+                  selected={selected.has(tx.id)}
+                  onToggleSelect={() => toggleSelect(tx.id)}
                   onMarkPaid={() => markPaidMutation.mutate({ id: tx.id })}
                   onDelete={() => deleteMutation.mutate(tx.id)}
                   onEdit={() => setEditTx(tx)}
@@ -271,13 +325,20 @@ export default function TransactionsPage() {
   )
 }
 
-function TransactionRow({ tx, onMarkPaid, onDelete, onEdit, onCategorize }: { tx: Transaction; onMarkPaid: () => void; onDelete: () => void; onEdit: () => void; onCategorize: () => void }) {
+function TransactionRow({ tx, selected, onToggleSelect, onMarkPaid, onDelete, onEdit, onCategorize }: { tx: Transaction; selected: boolean; onToggleSelect: () => void; onMarkPaid: () => void; onDelete: () => void; onEdit: () => void; onCategorize: () => void }) {
   const isIncome = tx.type === 'INCOME'
   const isTransfer = tx.type === 'TRANSFER'
   const hasCategoryIcon = !isTransfer && !!tx.categoryIcon
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group">
+    <div className={cn("flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors group", selected && 'bg-primary/5')}>
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onToggleSelect}
+        className="h-4 w-4 rounded border-gray-300 flex-shrink-0"
+        aria-label="Selecionar lançamento"
+      />
       <div
         className={cn(
           "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0",
@@ -360,6 +421,9 @@ function TransactionRow({ tx, onMarkPaid, onDelete, onEdit, onCategorize }: { tx
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={onEdit}>
             <Pencil className="h-4 w-4 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" title="Excluir" onClick={onDelete}>
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       </div>

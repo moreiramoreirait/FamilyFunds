@@ -55,6 +55,11 @@ public class TransactionService {
                 .and(dateTo(endDate))
                 .and(descriptionContains(search));
 
+        // Sem filtro explícito de status, oculta os cancelados (equivalente a "excluídos").
+        if (status == null) {
+            spec = spec.and(notCancelled());
+        }
+
         PageRequest pageRequest = PageRequest.of(page, size,
                 Sort.by(Sort.Direction.DESC, "transactionDate"));
         return transactionRepository.findAll(spec, pageRequest).map(this::toResponse);
@@ -171,6 +176,15 @@ public class TransactionService {
         }
         t.setStatus(TransactionStatus.CANCELLED);
         transactionRepository.save(t);
+    }
+
+    /** Exclui (cancela) vários lançamentos de uma vez, revertendo os saldos de cada um. */
+    @Transactional
+    public void deleteMany(UUID familyGroupId, List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return;
+        for (UUID id : ids) {
+            delete(familyGroupId, id);
+        }
     }
 
     private Transaction buildTransaction(TransactionRequest request, FamilyGroup group, User currentUser) {

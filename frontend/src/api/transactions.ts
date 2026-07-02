@@ -61,6 +61,9 @@ export const transactionsApi = {
   delete: (groupId: string, id: string) =>
     apiClient.delete(`/family-groups/${groupId}/transactions/${id}`),
 
+  bulkDelete: (groupId: string, ids: string[]) =>
+    apiClient.post(`/family-groups/${groupId}/transactions/bulk-delete`, { ids }),
+
   categorize: (groupId: string, id: string, data: { categoryId: string; subcategoryId?: string; scope: 'SINGLE' | 'ALL_MATCHING' | 'THIS_AND_FUTURE'; keyword?: string }) =>
     apiClient.post<{ affected: number; ruleCreated: boolean }>(`/family-groups/${groupId}/transactions/${id}/categorize`, data).then(r => r.data),
 

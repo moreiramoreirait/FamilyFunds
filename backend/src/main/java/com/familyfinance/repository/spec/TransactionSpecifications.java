@@ -59,6 +59,11 @@ public final class TransactionSpecifications {
                 : (root, query, cb) -> cb.lessThanOrEqualTo(root.get("transactionDate"), end);
     }
 
+    /** Exclui lançamentos cancelados — aplicado quando não há filtro de status explícito. */
+    public static Specification<Transaction> notCancelled() {
+        return (root, query, cb) -> cb.notEqual(root.get("status"), TransactionStatus.CANCELLED);
+    }
+
     /** Busca por descrição (contém, case-insensitive) — para funcionar em todas as páginas. */
     public static Specification<Transaction> descriptionContains(String search) {
         if (search == null || search.isBlank()) return null;
