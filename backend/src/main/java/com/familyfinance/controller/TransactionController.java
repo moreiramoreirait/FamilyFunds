@@ -46,7 +46,7 @@ public class TransactionController {
             @Valid @RequestBody CategorizeRequest req,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(categorizationService.categorize(
-                groupId, transactionId, req.categoryId(), req.scope(), req.keyword(), user));
+                groupId, transactionId, req.categoryId(), req.subcategoryId(), req.scope(), req.keyword(), user));
     }
 
     @GetMapping("/categorize-count")

@@ -30,11 +30,14 @@ export function CategorizeDialog({ open, onClose, groupId, transaction }: Props)
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [categoryId, setCategoryId] = useState(transaction.categoryId || '')
+  const [subcategoryId, setSubcategoryId] = useState(transaction.subcategoryId || '')
   const [keyword, setKeyword] = useState(suggestKeyword(transaction.description))
 
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', groupId], queryFn: () => categoriesApi.list(groupId), enabled: open,
   })
+
+  const subcategories = categories.find(c => c.id === categoryId)?.subcategories ?? []
 
   const kw = keyword.trim()
   const { data: matchCount } = useQuery({
@@ -45,7 +48,7 @@ export function CategorizeDialog({ open, onClose, groupId, transaction }: Props)
 
   const mutation = useMutation({
     mutationFn: (scope: Scope) =>
-      transactionsApi.categorize(groupId, transaction.id, { categoryId, scope, keyword: keyword.trim() || undefined }),
+      transactionsApi.categorize(groupId, transaction.id, { categoryId, subcategoryId: subcategoryId || undefined, scope, keyword: keyword.trim() || undefined }),
     onSuccess: (r) => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -74,13 +77,25 @@ export function CategorizeDialog({ open, onClose, groupId, transaction }: Props)
 
           <div className="space-y-1.5">
             <Label>Categoria</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
+            <Select value={categoryId} onValueChange={v => { setCategoryId(v); setSubcategoryId('') }}>
               <SelectTrigger><SelectValue placeholder="Selecionar categoria…" /></SelectTrigger>
               <SelectContent>
                 {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+
+          {subcategories.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Subcategoria (opcional)</Label>
+              <Select value={subcategoryId} onValueChange={setSubcategoryId}>
+                <SelectTrigger><SelectValue placeholder="Selecionar subcategoria…" /></SelectTrigger>
+                <SelectContent>
+                  {subcategories.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label>Palavra-chave (para "todos" e "futuros")</Label>

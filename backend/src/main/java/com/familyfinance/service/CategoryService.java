@@ -1,6 +1,7 @@
 package com.familyfinance.service;
 
 import com.familyfinance.dto.request.CategoryRequest;
+import com.familyfinance.dto.request.SubcategoryRequest;
 import com.familyfinance.dto.response.CategoryResponse;
 import com.familyfinance.dto.response.SubcategoryResponse;
 import com.familyfinance.entity.*;
@@ -74,6 +75,51 @@ public class CategoryService {
         }
         category.setIsActive(false);
         categoryRepository.save(category);
+    }
+
+    // ---------- Subcategorias (apenas nome/descrição — sem ícone/cor) ----------
+
+    @Transactional
+    public SubcategoryResponse createSubcategory(UUID familyGroupId, UUID categoryId, SubcategoryRequest request, User currentUser) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
+        if (!category.getFamilyGroup().getId().equals(familyGroupId)) {
+            throw new BusinessException("A categoria não pertence a este grupo");
+        }
+        FamilyGroup group = new FamilyGroup(); group.setId(familyGroupId);
+        Category catRef = new Category(); catRef.setId(categoryId);
+        Subcategory sub = Subcategory.builder()
+                .category(catRef)
+                .familyGroup(group)
+                .name(request.name())
+                .isActive(true)
+                .createdBy(currentUser)
+                .build();
+        sub = subcategoryRepository.save(sub);
+        return new SubcategoryResponse(sub.getId(), categoryId, sub.getName(), sub.getColor(), sub.getIcon(), sub.getIsActive());
+    }
+
+    @Transactional
+    public SubcategoryResponse updateSubcategory(UUID familyGroupId, UUID subcategoryId, SubcategoryRequest request) {
+        Subcategory sub = subcategoryRepository.findById(subcategoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subcategory", "id", subcategoryId));
+        if (!sub.getFamilyGroup().getId().equals(familyGroupId)) {
+            throw new BusinessException("A subcategoria não pertence a este grupo");
+        }
+        sub.setName(request.name());
+        sub = subcategoryRepository.save(sub);
+        return new SubcategoryResponse(sub.getId(), sub.getCategory().getId(), sub.getName(), sub.getColor(), sub.getIcon(), sub.getIsActive());
+    }
+
+    @Transactional
+    public void deleteSubcategory(UUID familyGroupId, UUID subcategoryId) {
+        Subcategory sub = subcategoryRepository.findById(subcategoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subcategory", "id", subcategoryId));
+        if (!sub.getFamilyGroup().getId().equals(familyGroupId)) {
+            throw new BusinessException("A subcategoria não pertence a este grupo");
+        }
+        sub.setIsActive(false);
+        subcategoryRepository.save(sub);
     }
 
     @Transactional

@@ -6,6 +6,7 @@ import com.familyfinance.exception.BusinessException;
 import com.familyfinance.exception.ResourceNotFoundException;
 import com.familyfinance.repository.CategorizationRuleRepository;
 import com.familyfinance.repository.CategoryRepository;
+import com.familyfinance.repository.SubcategoryRepository;
 import com.familyfinance.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,10 +27,11 @@ public class CategorizationService {
     private final TransactionRepository transactionRepository;
     private final CategorizationRuleRepository ruleRepository;
     private final CategoryRepository categoryRepository;
+    private final SubcategoryRepository subcategoryRepository;
     private final FamilyGroupService familyGroupService;
 
     @Transactional
-    public CategorizeResultResponse categorize(UUID groupId, UUID txId, UUID categoryId,
+    public CategorizeResultResponse categorize(UUID groupId, UUID txId, UUID categoryId, UUID subcategoryId,
                                                CategorizeScope scope, String keyword, User user) {
         familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
 
@@ -44,8 +46,21 @@ public class CategorizationService {
             throw new BusinessException("Categoria não pertence a este grupo");
         }
 
+        Subcategory subcategory = null;
+        if (subcategoryId != null) {
+            subcategory = subcategoryRepository.findById(subcategoryId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Subcategoria não encontrada"));
+            if (subcategory.getFamilyGroup() == null || !subcategory.getFamilyGroup().getId().equals(groupId)) {
+                throw new BusinessException("Subcategoria não pertence a este grupo");
+            }
+            if (subcategory.getCategory() == null || !subcategory.getCategory().getId().equals(categoryId)) {
+                throw new BusinessException("A subcategoria não pertence à categoria escolhida");
+            }
+        }
+
         int affected = 0;
         tx.setCategory(category);
+        tx.setSubcategory(subcategory);
         transactionRepository.save(tx);
         affected++;
 
@@ -56,6 +71,7 @@ public class CategorizationService {
                     .findByFamilyGroupIdAndDescriptionContainingIgnoreCase(groupId, rawKeyword)) {
                 if (m.getId().equals(txId)) continue;
                 m.setCategory(category);
+                m.setSubcategory(subcategory);
                 transactionRepository.save(m);
                 affected++;
             }

@@ -1,7 +1,9 @@
 package com.familyfinance.controller;
 
 import com.familyfinance.dto.request.CategoryRequest;
+import com.familyfinance.dto.request.SubcategoryRequest;
 import com.familyfinance.dto.response.CategoryResponse;
+import com.familyfinance.dto.response.SubcategoryResponse;
 import com.familyfinance.entity.MemberRole;
 import com.familyfinance.entity.User;
 import com.familyfinance.service.CategoryService;
@@ -50,6 +52,27 @@ public class CategoryController {
     public ResponseEntity<Void> delete(@PathVariable UUID groupId, @PathVariable UUID categoryId, @AuthenticationPrincipal User user) {
         familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
         categoryService.delete(groupId, categoryId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ---------- Subcategorias ----------
+
+    @PostMapping("/{categoryId}/subcategories")
+    public ResponseEntity<SubcategoryResponse> createSubcategory(@PathVariable UUID groupId, @PathVariable UUID categoryId, @Valid @RequestBody SubcategoryRequest req, @AuthenticationPrincipal User user) {
+        familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createSubcategory(groupId, categoryId, req, user));
+    }
+
+    @PutMapping("/{categoryId}/subcategories/{subcategoryId}")
+    public ResponseEntity<SubcategoryResponse> updateSubcategory(@PathVariable UUID groupId, @PathVariable UUID categoryId, @PathVariable UUID subcategoryId, @Valid @RequestBody SubcategoryRequest req, @AuthenticationPrincipal User user) {
+        familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
+        return ResponseEntity.ok(categoryService.updateSubcategory(groupId, subcategoryId, req));
+    }
+
+    @DeleteMapping("/{categoryId}/subcategories/{subcategoryId}")
+    public ResponseEntity<Void> deleteSubcategory(@PathVariable UUID groupId, @PathVariable UUID categoryId, @PathVariable UUID subcategoryId, @AuthenticationPrincipal User user) {
+        familyGroupService.assertRole(groupId, user.getId(), MemberRole.EDITOR);
+        categoryService.deleteSubcategory(groupId, subcategoryId);
         return ResponseEntity.noContent().build();
     }
 }
