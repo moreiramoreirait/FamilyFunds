@@ -280,22 +280,31 @@ public class BankImportService {
      * Returns [dateIdx, descIdx, amountIdx, debitIdx, creditIdx] or null if not a header.
      * debitIdx/creditIdx are -1 when there's a single amount column.
      */
+    /** Minúsculo, sem acento, só letras (para comparar cabeçalhos/descrições). */
+    private String normalizeKey(String s) {
+        if (s == null) return "";
+        return java.text.Normalizer.normalize(s.toLowerCase().trim(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^a-z]", "");
+    }
+
     private int[] detectCsvColumns(String[] parts) {
         int dateIdx = -1, descIdx = -1, amountIdx = -1, debitIdx = -1, creditIdx = -1;
         for (int i = 0; i < parts.length; i++) {
-            String h = java.text.Normalizer.normalize(parts[i].toLowerCase().trim(), java.text.Normalizer.Form.NFD)
-                    .replaceAll("\\p{M}", "")       // remove acentos (crédito -> credito)
-                    .replaceAll("[^a-z]", "");
-            if (h.contains("data") || h.equals("date")) {
+            String h = normalizeKey(parts[i]);
+            // "keep first": não sobrescreve uma coluna já encontrada (evita que "Tipo
+            // Lançamento" roube a descrição, p.ex. no BB).
+            if (dateIdx == -1 && (h.contains("data") || h.equals("date"))) {
                 dateIdx = i;
-            } else if (h.contains("descr") || h.contains("histor") || h.contains("memo")
-                    || h.contains("lancam") || h.contains("detalhe")) {
+            } else if (descIdx == -1 && !h.contains("tipo")
+                    && (h.contains("descr") || h.contains("histor") || h.contains("memo")
+                        || h.contains("lancam") || h.contains("detalhe"))) {
                 descIdx = i;
-            } else if (h.contains("valor") || h.equals("amount") || h.equals("value")) {
+            } else if (amountIdx == -1 && (h.contains("valor") || h.equals("amount") || h.equals("value"))) {
                 amountIdx = i;
-            } else if (h.contains("debito") || h.contains("debit") || h.contains("saida")) {
+            } else if (debitIdx == -1 && (h.contains("debito") || h.contains("debit") || h.contains("saida"))) {
                 debitIdx = i;
-            } else if (h.contains("credito") || h.contains("credit") || h.contains("entrada")) {
+            } else if (creditIdx == -1 && (h.contains("credito") || h.contains("credit") || h.contains("entrada"))) {
                 creditIdx = i;
             }
         }
@@ -312,6 +321,8 @@ public class BankImportService {
             if (date == null) return null;
 
             String desc = parts[col[1]];
+            // Ignora linhas de saldo/controle (Saldo Anterior, Saldo do dia, "S A L D O")
+            if (normalizeKey(desc).contains("saldo")) return null;
             BigDecimal amount;
 
             if (col[2] >= 0 && col[2] < parts.length) {
