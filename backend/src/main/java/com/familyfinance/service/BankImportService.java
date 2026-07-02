@@ -260,20 +260,42 @@ public class BankImportService {
             if (c != null) { colMap = c; headerIdx = i; break; }
         }
 
+        // Se o cabeçalho não foi reconhecido, tenta um perfil de banco conhecido (pela assinatura)
+        // antes de cair no palpite padrão [0,1,2].
+        boolean fromHeader = colMap != null;
+        if (colMap == null) colMap = detectByProfile(lines);
+
         List<ParsedRow> rows = new ArrayList<>();
-        if (colMap != null) {
-            for (int i = headerIdx + 1; i < lines.size(); i++) {
-                ParsedRow r = parseCsvRow(lines.get(i), colMap, String.join(";", lines.get(i)));
-                if (r != null) rows.add(r);
-            }
-        } else {
-            int[] def = {0, 1, 2, -1, -1};
-            for (String[] parts : lines) {
-                ParsedRow r = parseCsvRow(parts, def, String.join(";", parts));
-                if (r != null) rows.add(r);
-            }
+        int start = fromHeader ? headerIdx + 1 : 0;
+        int[] map = colMap != null ? colMap : new int[]{0, 1, 2, -1, -1};
+        for (int i = start; i < lines.size(); i++) {
+            ParsedRow r = parseCsvRow(lines.get(i), map, String.join(";", lines.get(i)));
+            if (r != null) rows.add(r);
         }
         return rows;
+    }
+
+    /** Perfis de bancos conhecidos: se a assinatura aparece no arquivo, usa o mapa de colunas.
+     *  Serve de rede de segurança quando o cabeçalho não é reconhecido automaticamente.
+     *  colMap = [dateIdx, descIdx, amountIdx, debitIdx, creditIdx]. Fácil de estender. */
+    private record BankProfile(String name, String signature, int[] colMap) {}
+
+    private static final List<BankProfile> BANK_PROFILES = List.of(
+            new BankProfile("Bradesco", "docto", new int[]{0, 1, -1, 4, 3}),
+            new BankProfile("Banco do Brasil", "tipolancamento", new int[]{0, 1, 4, -1, -1})
+    );
+
+    private int[] detectByProfile(List<String[]> lines) {
+        for (String[] l : lines) {
+            String joined = normalizeKey(String.join(" ", l));
+            for (BankProfile p : BANK_PROFILES) {
+                if (joined.contains(p.signature())) {
+                    log.info("Perfil de banco detectado no import: {}", p.name());
+                    return p.colMap();
+                }
+            }
+        }
+        return null;
     }
 
     private String[] splitCsvLine(String line) {
