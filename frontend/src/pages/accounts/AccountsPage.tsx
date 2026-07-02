@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency, getAccountTypeLabel, cn } from '@/lib/utils'
+import { BANKS, findBank } from '@/lib/banks'
 import { useToast } from '@/hooks/use-toast'
 import type { Account, AccountType } from '@/types'
 
@@ -134,10 +135,15 @@ function AccountModal({ open, onClose, account, groupId }: AccountModalProps) {
             <Label htmlFor="acc-bank">Banco / Instituição</Label>
             <Input
               id="acc-bank"
+              list="bank-list"
               value={bankName}
-              onChange={e => setBankName(e.target.value)}
+              onChange={e => { const v = e.target.value; setBankName(v); const b = findBank(v); if (b) setColor(b.color) }}
               placeholder="Nubank, Itaú, Caixa…"
             />
+            <datalist id="bank-list">
+              {BANKS.map(b => <option key={b.name} value={b.name} />)}
+            </datalist>
+            <p className="text-xs text-muted-foreground">Escolha da lista para puxar a cor do banco (ou digite outro).</p>
           </div>
 
           {/* Type */}

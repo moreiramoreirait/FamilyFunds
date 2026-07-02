@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { formatCurrency, cn } from '@/lib/utils'
+import { BANKS, findBank } from '@/lib/banks'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -38,13 +39,41 @@ function CardForm({ card, onSave, onClose }: {
     creditLimit: card?.creditLimit || 0,
     closingDay: card?.closingDay || 10,
     dueDay: card?.dueDay || 20,
+    color: card?.color || undefined,
   })
+  const [bank, setBank] = useState('')
 
   return (
     <form onSubmit={e => { e.preventDefault(); onSave(form) }} className="space-y-4">
       <div className="space-y-1.5">
         <Label>Nome do Cartão</Label>
         <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ex: Visa Bradesco" required />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Banco</Label>
+        <Input
+          list="card-bank-list"
+          value={bank}
+          onChange={e => {
+            const v = e.target.value; setBank(v)
+            const b = findBank(v)
+            if (b) setForm(f => ({ ...f, color: b.color, name: f.name || `${f.brand} ${b.name}` }))
+          }}
+          placeholder="Escolha o banco (define a cor do cartão)"
+        />
+        <datalist id="card-bank-list">
+          {BANKS.map(b => <option key={b.name} value={b.name} />)}
+        </datalist>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Cor do cartão</Label>
+        <div className="flex items-center gap-3">
+          <input type="color" value={form.color || '#6b21a8'}
+            onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
+            className="w-10 h-9 rounded border border-input cursor-pointer" title="Cor personalizada" />
+          <div className="flex-1 h-9 rounded-lg" style={{ background: form.color || undefined }} />
+        </div>
+        <p className="text-xs text-muted-foreground">Vem do banco escolhido; você pode personalizar.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -249,10 +278,12 @@ export default function CardsPage() {
                 key={card.id}
                 onClick={() => setSelectedCard(card.id === selectedCard ? null : card.id)}
                 className={cn(
-                  'relative overflow-hidden rounded-2xl p-5 cursor-pointer transition-all bg-gradient-to-br text-white',
-                  BRAND_COLORS[card.brand] || 'from-gray-600 to-gray-800',
+                  'relative overflow-hidden rounded-2xl p-5 cursor-pointer transition-all text-white',
+                  !card.color && 'bg-gradient-to-br',
+                  !card.color && (BRAND_COLORS[card.brand] || 'from-gray-600 to-gray-800'),
                   selectedCard === card.id ? 'ring-2 ring-white/30 shadow-xl scale-[1.02]' : 'hover:scale-[1.01] shadow-md'
                 )}
+                style={card.color ? { background: `linear-gradient(135deg, ${card.color}, ${card.color}bb)` } : undefined}
               >
                 <div className="flex items-start justify-between mb-6">
                   <div>
