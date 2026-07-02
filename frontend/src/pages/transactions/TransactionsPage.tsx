@@ -372,11 +372,11 @@ function TransactionRow({ tx, selected, onToggleSelect, onMarkPaid, onDelete, on
               <span className="text-xs text-muted-foreground">{tx.categoryName}</span>
             </>
           )}
-          {tx.accountName && (
+          {(tx.accountName || tx.creditCardName) && (
             <>
               <span className="text-muted-foreground text-xs">•</span>
               <span className="text-xs text-muted-foreground">
-                {tx.accountName}
+                {tx.creditCardName ? `${tx.creditCardName} (cartão)` : tx.accountName}
                 {isTransfer && tx.destinationAccountName ? ` → ${tx.destinationAccountName}` : ''}
               </span>
             </>

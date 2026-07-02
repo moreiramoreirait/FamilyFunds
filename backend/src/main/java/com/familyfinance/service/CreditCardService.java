@@ -121,10 +121,19 @@ public class CreditCardService {
                 ? paymentDate.atStartOfDay()
                 : java.time.LocalDateTime.now());
         invoice.setPaymentAccount(payAccount);
+        invoice.setPaidAmount(invoice.getTotalAmount());
 
-        // Debit payment account
+        // Debita a conta de pagamento pelo total da fatura
         payAccount.setCurrentBalance(payAccount.getCurrentBalance().subtract(invoice.getTotalAmount()));
         accountRepository.save(payAccount);
+
+        // Devolve o limite disponível do cartão (a fatura foi quitada)
+        CreditCard card = invoice.getCreditCard();
+        if (card != null) {
+            BigDecimal avail = card.getAvailableLimit() != null ? card.getAvailableLimit() : BigDecimal.ZERO;
+            card.setAvailableLimit(avail.add(invoice.getTotalAmount()));
+            creditCardRepository.save(card);
+        }
 
         return toInvoiceResponse(invoiceRepository.save(invoice));
     }

@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 import { transactionsApi } from '@/api/transactions'
 import { categoriesApi } from '@/api/categories'
 import { accountsApi } from '@/api/accounts'
+import { creditCardsApi } from '@/api/creditCards'
 import { tagsApi } from '@/api/tags'
 import { familyGroupsApi } from '@/api/familyGroups'
 import { useAuthStore } from '@/store/authStore'
@@ -30,6 +31,7 @@ const schema = z.object({
   categoryId: z.string().optional(),
   subcategoryId: z.string().optional(),
   accountId: z.string().optional(),
+  creditCardId: z.string().optional(),
   destinationAccountId: z.string().optional(),
   status: z.enum(['PENDING', 'PAID', 'CANCELLED']),
   notes: z.string().optional(),
@@ -83,6 +85,15 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
     enabled: !!groupId,
   })
 
+  const { data: cards = [] } = useQuery({
+    queryKey: ['credit-cards', groupId],
+    queryFn: () => creditCardsApi.list(groupId!),
+    enabled: !!groupId,
+  })
+
+  // Pagamento: conta ou cartão (só faz sentido em despesas)
+  const [payWith, setPayWith] = useState<'account' | 'card'>('account')
+
   const {
     register, handleSubmit, control, watch, reset, setValue, formState: { errors },
   } = useForm<FormData>({
@@ -107,6 +118,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         categoryId: transaction.categoryId || '',
         subcategoryId: (transaction as any).subcategoryId || '',
         accountId: transaction.accountId || '',
+        creditCardId: transaction.creditCardId || '',
         destinationAccountId: transaction.destinationAccountId || '',
         status: transaction.status as any,
         notes: transaction.notes || '',
@@ -114,6 +126,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         isInstallment: false,
         isRecurrent: false,
       })
+      setPayWith(transaction.creditCardId ? 'card' : 'account')
     } else {
       reset({
         type: defaultType,
@@ -123,6 +136,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         isInstallment: false,
         isRecurrent: false,
       })
+      setPayWith('account')
     }
   }, [transaction, defaultType, reset])
 
@@ -138,6 +152,11 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
     setValue('subcategoryId', '')
   }, [selectedCategoryId, setValue])
 
+  // Cartão só faz sentido em despesas — receita/transferência sempre usam conta
+  useEffect(() => {
+    if (selectedType !== 'EXPENSE') setPayWith('account')
+  }, [selectedType])
+
   const filteredCategories = categories.filter(c =>
     c.type === selectedType || c.type === 'BOTH'
   )
@@ -145,6 +164,7 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
   const mutation = useMutation<unknown, Error, FormData>({
     mutationFn: (data: FormData) => {
       const isTransfer = data.type === 'TRANSFER'
+      const isCard = data.type === 'EXPENSE' && payWith === 'card'
       const payload = {
         description: data.description,
         amount: parseFloat(data.amount.replace(',', '.')),
@@ -153,7 +173,8 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
         dueDate: data.dueDate || undefined,
         categoryId: isTransfer ? undefined : (data.categoryId || undefined),
         subcategoryId: isTransfer ? undefined : (data.subcategoryId || undefined),
-        accountId: data.accountId || undefined,
+        accountId: isCard ? undefined : (data.accountId || undefined),
+        creditCardId: isCard ? (data.creditCardId || undefined) : undefined,
         destinationAccountId: isTransfer ? (data.destinationAccountId || undefined) : undefined,
         status: data.status,
         notes: data.notes || undefined,
@@ -162,6 +183,9 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
       }
       if (!groupId) {
         throw new Error('Nenhum grupo familiar selecionado. Crie ou selecione uma família primeiro.')
+      }
+      if (isCard && !payload.creditCardId) {
+        throw new Error('Selecione o cartão.')
       }
       if (isTransfer) {
         if (!payload.accountId || !payload.destinationAccountId) {
@@ -327,17 +351,44 @@ export function TransactionModal({ open, onClose, transaction, defaultType = 'EX
                 )} />
               </div>
               <div className="space-y-1.5">
-                <Label>Conta</Label>
-                <Controller name="accountId" control={control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                    <SelectContent>
-                      {accounts.map(a => (
-                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )} />
+                {selectedType === 'EXPENSE' ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>{payWith === 'card' ? 'Cartão' : 'Conta'}</Label>
+                    <div className="flex rounded-md border border-border overflow-hidden text-xs flex-shrink-0">
+                      <button type="button" onClick={() => setPayWith('account')}
+                        className={cn('px-2 py-0.5', payWith === 'account' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+                        Conta
+                      </button>
+                      <button type="button" onClick={() => setPayWith('card')}
+                        className={cn('px-2 py-0.5', payWith === 'card' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+                        Cartão
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <Label>Conta</Label>
+                )}
+                {selectedType === 'EXPENSE' && payWith === 'card' ? (
+                  <Controller name="creditCardId" control={control} render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue placeholder={cards.length ? 'Selecionar cartão...' : 'Nenhum cartão cadastrado'} /></SelectTrigger>
+                      <SelectContent>
+                        {cards.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )} />
+                ) : (
+                  <Controller name="accountId" control={control} render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                      <SelectContent>
+                        {accounts.map(a => (
+                          <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )} />
+                )}
               </div>
             </div>
           )}

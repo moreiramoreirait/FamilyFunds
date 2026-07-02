@@ -31,6 +31,7 @@ public class TransactionService {
     private final SubcategoryRepository subcategoryRepository;
     private final CostCenterRepository costCenterRepository;
     private final CreditCardRepository creditCardRepository;
+    private final CreditCardInvoiceRepository invoiceRepository;
     private final TagRepository tagRepository;
     private final AccountService accountService;
     private final SubscriptionService subscriptionService;
@@ -85,8 +86,12 @@ public class TransactionService {
         }
         t = transactionRepository.save(t);
 
-        // Atualiza saldo(s) se pago — transferência ajusta origem e destino
-        if (isPaid(t)) {
+        // Despesa no cartão entra na fatura (não mexe no saldo da conta).
+        // Caso contrário, atualiza saldo se pago (transferência ajusta origem e destino).
+        if (t.getCreditCard() != null) {
+            applyCardExpense(t);
+            t = transactionRepository.save(t);
+        } else if (isPaid(t)) {
             updateAccountBalance(t, true);
         }
 
@@ -119,7 +124,12 @@ public class TransactionService {
             t.setDueDate(date);
             t.setDescription(request.description() + " (" + finalI + "/" + request.installmentTotal() + ")");
             t.setStatus(TransactionStatus.PENDING);
-            results.add(toResponse(transactionRepository.save(t)));
+            t = transactionRepository.save(t);
+            if (t.getCreditCard() != null) {   // cada parcela cai na fatura do seu mês
+                applyCardExpense(t);
+                t = transactionRepository.save(t);
+            }
+            results.add(toResponse(t));
         }
         return results;
     }
@@ -129,16 +139,21 @@ public class TransactionService {
         validateTransfer(request);
         Transaction existing = findAndValidate(familyGroupId, transactionId);
 
-        // Reverte o efeito de saldo antigo (origem e destino, conforme o tipo antigo)
-        if (isPaid(existing)) {
+        // Reverte o efeito antigo: fatura (cartão) ou saldo (conta/transferência)
+        if (existing.getCreditCard() != null) {
+            reverseCardExpense(existing);
+        } else if (isPaid(existing)) {
             updateAccountBalance(existing, false);
         }
 
         updateTransaction(existing, request);
         existing = transactionRepository.save(existing);
 
-        // Aplica o novo efeito de saldo
-        if (isPaid(existing)) {
+        // Aplica o novo efeito
+        if (existing.getCreditCard() != null) {
+            applyCardExpense(existing);
+            existing = transactionRepository.save(existing);
+        } else if (isPaid(existing)) {
             updateAccountBalance(existing, true);
         }
 
@@ -171,7 +186,9 @@ public class TransactionService {
     @Transactional
     public void delete(UUID familyGroupId, UUID transactionId) {
         Transaction t = findAndValidate(familyGroupId, transactionId);
-        if (isPaid(t)) {
+        if (t.getCreditCard() != null) {
+            reverseCardExpense(t);
+        } else if (isPaid(t)) {
             updateAccountBalance(t, false);
         }
         t.setStatus(TransactionStatus.CANCELLED);
@@ -205,7 +222,11 @@ public class TransactionService {
                 .createdBy(currentUser)
                 .status(request.status() != null ? request.status() : TransactionStatus.PENDING);
 
-        if (request.accountId() != null) {
+        // Pagamento: cartão OU conta (exclusivos). Cartão tem precedência.
+        if (request.creditCardId() != null) {
+            CreditCard card = new CreditCard(); card.setId(request.creditCardId());
+            builder.creditCard(card);
+        } else if (request.accountId() != null) {
             Account acc = new Account(); acc.setId(request.accountId());
             builder.account(acc);
         }
@@ -244,7 +265,15 @@ public class TransactionService {
         t.setPaidDate(r.paidDate());
         t.setNotes(r.notes());
         if (r.status() != null) t.setStatus(r.status());
-        if (r.accountId() != null) { Account a = new Account(); a.setId(r.accountId()); t.setAccount(a); }
+        // Pagamento: cartão OU conta (exclusivos). Transferência sempre usa conta.
+        if (r.type() != TransactionType.TRANSFER && r.creditCardId() != null) {
+            CreditCard c = new CreditCard(); c.setId(r.creditCardId()); t.setCreditCard(c);
+            t.setAccount(null);
+        } else {
+            t.setCreditCard(null);
+            if (r.accountId() != null) { Account a = new Account(); a.setId(r.accountId()); t.setAccount(a); }
+            else t.setAccount(null);
+        }
         // Conta destino só faz sentido em transferências — limpa ao trocar o tipo
         if (r.type() == TransactionType.TRANSFER) {
             if (r.destinationAccountId() != null) { Account a = new Account(); a.setId(r.destinationAccountId()); t.setDestinationAccount(a); }
@@ -307,6 +336,75 @@ public class TransactionService {
                 String.format("%s registrou %s \"%s\" — R$ %s",
                         currentUser.getName(), artigo, t.getDescription(), t.getAmount().toPlainString()),
                 "TRANSACTION_CREATED");
+    }
+
+    // ---------- Despesa no cartão de crédito → fatura ----------
+
+    private BigDecimal nz(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
+
+    /** Vincula a despesa à fatura do mês do cartão (soma no total) e reduz o limite disponível. */
+    private void applyCardExpense(Transaction t) {
+        if (t.getCreditCard() == null) return;
+        CreditCard card = creditCardRepository.findById(t.getCreditCard().getId()).orElse(null);
+        if (card == null) return;
+
+        CreditCardInvoice invoice = getOrCreateInvoiceForDate(card, t.getTransactionDate());
+        invoice.setTotalAmount(nz(invoice.getTotalAmount()).add(t.getAmount()));
+        invoiceRepository.save(invoice);
+        t.setInvoice(invoice);
+
+        card.setAvailableLimit(nz(card.getAvailableLimit()).subtract(t.getAmount()));
+        creditCardRepository.save(card);
+    }
+
+    /** Reverte a despesa da fatura (subtrai do total) e devolve o limite. */
+    private void reverseCardExpense(Transaction t) {
+        if (t.getCreditCard() == null) return;
+        if (t.getInvoice() != null) {
+            CreditCardInvoice invoice = invoiceRepository.findById(t.getInvoice().getId()).orElse(null);
+            if (invoice != null) {
+                invoice.setTotalAmount(nz(invoice.getTotalAmount()).subtract(t.getAmount()));
+                invoiceRepository.save(invoice);
+            }
+        }
+        CreditCard card = creditCardRepository.findById(t.getCreditCard().getId()).orElse(null);
+        if (card != null) {
+            card.setAvailableLimit(nz(card.getAvailableLimit()).add(t.getAmount()));
+            creditCardRepository.save(card);
+        }
+        t.setInvoice(null);
+    }
+
+    /** Fatura do cartão cujo mês/ano corresponde à data da compra (relativo ao dia de fechamento). */
+    private CreditCardInvoice getOrCreateInvoiceForDate(CreditCard card, LocalDate date) {
+        int closingDay = card.getClosingDay();
+        int refMonth, refYear;
+        if (date.getDayOfMonth() <= closingDay) {
+            refMonth = date.getMonthValue();
+            refYear = date.getYear();
+        } else {
+            LocalDate nextMonth = date.plusMonths(1);
+            refMonth = nextMonth.getMonthValue();
+            refYear = nextMonth.getYear();
+        }
+        return invoiceRepository.findByCreditCardIdAndReferenceMonthAndReferenceYear(card.getId(), refMonth, refYear)
+                .orElseGet(() -> {
+                    int dom = Math.min(closingDay, java.time.YearMonth.of(refYear, refMonth).lengthOfMonth());
+                    LocalDate closingDate = LocalDate.of(refYear, refMonth, dom);
+                    LocalDate dueDate = closingDate.plusDays(card.getDueDay());
+                    CreditCardInvoice invoice = CreditCardInvoice.builder()
+                            .familyGroup(card.getFamilyGroup())
+                            .creditCard(card)
+                            .referenceMonth(refMonth)
+                            .referenceYear(refYear)
+                            .closingDate(closingDate)
+                            .dueDate(dueDate)
+                            .totalAmount(BigDecimal.ZERO)
+                            .paidAmount(BigDecimal.ZERO)
+                            .status(InvoiceStatus.OPEN)
+                            .build();
+                    return invoiceRepository.save(invoice);
+                });
     }
 
     private Transaction findAndValidate(UUID familyGroupId, UUID transactionId) {
