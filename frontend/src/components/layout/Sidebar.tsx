@@ -33,10 +33,10 @@ const navItems = [
 ]
 
 const planBadgeConfig: Record<string, { label: string; className: string }> = {
-  FREE:     { label: 'Gratuito', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
-  TRIAL:    { label: 'Trial',    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
-  PRO:      { label: 'Pro',      className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
-  BUSINESS: { label: 'Business', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
+  FREE:      { label: 'Gratuito',  className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300' },
+  TRIAL:     { label: 'Trial',     className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' },
+  ESSENCIAL: { label: 'Essencial', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' },
+  PREMIUM:   { label: 'Premium',   className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' },
 }
 
 export default function Sidebar() {
